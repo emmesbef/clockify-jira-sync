@@ -141,20 +141,72 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: documentation
-          path: .
+          path: artifacts/documentation
 
       - name: Download coverage artifact
         uses: actions/download-artifact@v4
         with:
           name: coverage
-          path: .
+          path: artifacts/coverage
+
+      - name: Normalize downloaded artifact layout
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          DOCS_DIR="artifacts/documentation"
+          if [[ -d "$DOCS_DIR/generated-docs" ]]; then
+            DOCS_DIR="$DOCS_DIR/generated-docs"
+          fi
+          if [[ ! -f "$DOCS_DIR/README.md" ]]; then
+            echo "Documentation artifact does not contain README.md in expected locations."
+            find artifacts/documentation -maxdepth 4 -type f | sort
+            exit 1
+          fi
+
+          COVERAGE_DIR="artifacts/coverage/coverage"
+          if [[ ! -f "$COVERAGE_DIR/backend.coverprofile" || ! -f "$COVERAGE_DIR/combined-coverage.json" ]]; then
+            COVERAGE_DIR="artifacts/coverage"
+          fi
+          if [[ ! -f "$COVERAGE_DIR/backend.coverprofile" || ! -f "$COVERAGE_DIR/combined-coverage.json" ]]; then
+            echo "Coverage artifact missing backend/combined coverage files."
+            find artifacts/coverage -maxdepth 5 -type f | sort
+            exit 1
+          fi
+
+          FRONTEND_COVERAGE_DIR="artifacts/coverage/frontend/coverage"
+          if [[ ! -f "$FRONTEND_COVERAGE_DIR/coverage-summary.json" ]]; then
+            FRONTEND_COVERAGE_DIR="$COVERAGE_DIR/frontend/coverage"
+          fi
+          if [[ ! -f "$FRONTEND_COVERAGE_DIR/coverage-summary.json" ]]; then
+            FRONTEND_COVERAGE_DIR="artifacts/coverage/frontend"
+          fi
+          if [[ ! -f "$FRONTEND_COVERAGE_DIR/coverage-summary.json" ]]; then
+            FRONTEND_COVERAGE_DIR="$COVERAGE_DIR/frontend"
+          fi
+          if [[ ! -f "$FRONTEND_COVERAGE_DIR/coverage-summary.json" ]]; then
+            echo "Coverage artifact missing frontend coverage summary."
+            find artifacts/coverage -maxdepth 5 -type f | sort
+            exit 1
+          fi
+
+          {
+            echo "DOCS_DIR=$DOCS_DIR"
+            echo "COVERAGE_DIR=$COVERAGE_DIR"
+            echo "FRONTEND_COVERAGE_DIR=$FRONTEND_COVERAGE_DIR"
+          } >> "$GITHUB_ENV"
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
       - name: Assemble GitHub Pages site
         shell: bash
-        run: scripts/ci/assemble-pages-site.sh --output site
+        run: |
+          scripts/ci/assemble-pages-site.sh \
+            --docs-dir "$DOCS_DIR" \
+            --coverage-dir "$COVERAGE_DIR" \
+            --frontend-coverage-dir "$FRONTEND_COVERAGE_DIR" \
+            --output site
 
       - name: Validate Pages site structure
         shell: bash
