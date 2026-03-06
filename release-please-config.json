@@ -3,7 +3,6 @@
   "bootstrap-sha": "0b5d00ee123528dd2e5f8147ce5de3a17f3b6227",
   "release-type": "go",
   "include-component-in-tag": false,
-  "skip-github-release": true,
   "packages": {
     ".": {
       "extra-files": [
