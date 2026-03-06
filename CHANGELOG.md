@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.0](https://github.com/emmesbef/clockify-jira-sync/compare/v1.2.0...v1.3.0) (2026-03-06)
+
+
+### Changes
+
+* No code changes since 1.2.0. This release only updates versioning/release metadata.
 ## [1.2.0](https://github.com/emmesbef/clockify-jira-sync/compare/v1.1.0...v1.2.0) (2026-03-06)
 
 
