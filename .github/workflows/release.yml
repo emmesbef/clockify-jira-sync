@@ -1,15 +1,24 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_call:
+    inputs:
+      tag_name:
+        description: Version tag to build and publish assets for.
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Version tag to build and publish assets for (for example v1.2.3).
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.tag_name || github.run_id }}
   cancel-in-progress: false
 
 env:
@@ -17,10 +26,38 @@ env:
   WAILS_VERSION: v2.11.0
 
 jobs:
+  prepare:
+    name: Resolve release tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.resolve.outputs.tag_name }}
+    steps:
+      - name: Resolve release tag
+        id: resolve
+        shell: bash
+        env:
+          INPUT_TAG_NAME: ${{ inputs.tag_name }}
+        run: |
+          set -euo pipefail
+          tag_name="${INPUT_TAG_NAME}"
+          if [[ -z "$tag_name" ]]; then
+            echo "A release tag is required."
+            exit 1
+          fi
+          if [[ "$tag_name" != v* ]]; then
+            echo "Release tags must start with 'v': $tag_name"
+            exit 1
+          fi
+          echo "tag_name=$tag_name" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build ${{ matrix.asset_id }}
+    needs:
+      - prepare
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
+    env:
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag_name }}
     strategy:
       fail-fast: false
       matrix:
@@ -35,6 +72,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.prepare.outputs.tag_name }}
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -73,7 +113,7 @@ jobs:
           set -euo pipefail
           mkdir -p release-assets
           APP_PATH="build/bin/clockify-jira-sync.app"
-          ASSET_PATH="release-assets/${APP_NAME}-${GITHUB_REF_NAME}-${{ matrix.asset_id }}.zip"
+          ASSET_PATH="release-assets/${APP_NAME}-${RELEASE_TAG}-${{ matrix.asset_id }}.zip"
           if [ ! -d "$APP_PATH" ]; then
             echo "Expected app bundle not found at $APP_PATH"
             ls -la build/bin || true
@@ -90,13 +130,13 @@ jobs:
           if (-not (Test-Path "build/bin")) {
             throw "build/bin not found after Wails build."
           }
-          $assetPath = "release-assets/$env:APP_NAME-$env:GITHUB_REF_NAME-${{ matrix.asset_id }}.zip"
+          $assetPath = "release-assets/$env:APP_NAME-$env:RELEASE_TAG-${{ matrix.asset_id }}.zip"
           Compress-Archive -Path "build/bin/*" -DestinationPath $assetPath -Force
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ format('{0}-{1}-{2}', env.APP_NAME, github.ref_name, matrix.asset_id) }}
+          name: ${{ format('{0}-{1}-{2}', env.APP_NAME, needs.prepare.outputs.tag_name, matrix.asset_id) }}
           path: release-assets/*.zip
           if-no-files-found: error
           retention-days: 14
@@ -106,9 +146,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs:
+      - prepare
       - build
     permissions:
       contents: write
+    env:
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag_name }}
     steps:
       - name: Download packaged artifacts
         uses: actions/download-artifact@v4
@@ -121,8 +164,8 @@ jobs:
         run: |
           set -euo pipefail
           expected_assets=(
-            "${APP_NAME}-${GITHUB_REF_NAME}-macos-universal.zip"
-            "${APP_NAME}-${GITHUB_REF_NAME}-windows-amd64.zip"
+            "${APP_NAME}-${RELEASE_TAG}-macos-universal.zip"
+            "${APP_NAME}-${RELEASE_TAG}-windows-amd64.zip"
           )
           for asset in "${expected_assets[@]}"; do
             if [ ! -f "release-assets/${asset}" ]; then
@@ -136,7 +179,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          CHECKSUM_FILE="${APP_NAME}-${GITHUB_REF_NAME}-SHA256SUMS.txt"
+          CHECKSUM_FILE="${APP_NAME}-${RELEASE_TAG}-SHA256SUMS.txt"
           cd release-assets
           find . -maxdepth 1 -type f -name '*.zip' -print0 | sort -z | xargs -0 -r sha256sum > "$CHECKSUM_FILE"
           if [ ! -s "$CHECKSUM_FILE" ]; then
@@ -144,12 +187,14 @@ jobs:
             exit 1
           fi
 
-      - name: Create release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          files: |
-            release-assets/*.zip
-            release-assets/*SHA256SUMS.txt
-          fail_on_unmatched_files: true
-          generate_release_notes: true
+      - name: Publish release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --json id >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" release-assets/*.zip release-assets/*SHA256SUMS.txt --clobber
+          else
+            gh release create "$RELEASE_TAG" release-assets/*.zip release-assets/*SHA256SUMS.txt --generate-notes --verify-tag
+          fi

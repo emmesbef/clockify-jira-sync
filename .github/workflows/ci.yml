@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   docs:
-    name: Verify and generate documentation
+    name: Verify and build documentation
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -21,19 +21,30 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
+
       - name: Verify documentation freshness
         shell: bash
         run: scripts/ci/verify-docs-freshness.sh
 
-      - name: Generate documentation bundle
-        shell: bash
-        run: scripts/ci/generate-docs-bundle.sh
+      - name: Install docs-site dependencies
+        working-directory: docs-site
+        run: npm ci --no-audit --no-fund
+
+      - name: Build docs-site
+        working-directory: docs-site
+        run: npm run build
 
       - name: Upload documentation artifact
         uses: actions/upload-artifact@v4
         with:
           name: documentation
-          path: generated-docs
+          path: docs-site/build
           if-no-files-found: error
 
   test:
@@ -155,11 +166,13 @@ jobs:
           set -euo pipefail
 
           DOCS_DIR="artifacts/documentation"
-          if [[ -d "$DOCS_DIR/generated-docs" ]]; then
-            DOCS_DIR="$DOCS_DIR/generated-docs"
+          if [[ -d "$DOCS_DIR/docs-site/build" ]]; then
+            DOCS_DIR="$DOCS_DIR/docs-site/build"
+          elif [[ -d "$DOCS_DIR/build" ]]; then
+            DOCS_DIR="$DOCS_DIR/build"
           fi
-          if [[ ! -f "$DOCS_DIR/README.md" ]]; then
-            echo "Documentation artifact does not contain README.md in expected locations."
+          if [[ ! -f "$DOCS_DIR/index.html" ]]; then
+            echo "Documentation artifact does not contain Docusaurus build output in expected locations."
             find artifacts/documentation -maxdepth 4 -type f | sort
             exit 1
           fi
@@ -213,6 +226,7 @@ jobs:
         run: |
           set -euo pipefail
           test -f site/index.html
+          test -d site/assets
           test -f site/docs/index.html
           test -f site/coverage/index.html
           test -f site/coverage/combined-coverage.json
