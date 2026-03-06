@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/ci.yml/badge.svg)](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/ci.yml)
 [![Release](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/release-please.yml/badge.svg)](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/release-please.yml)
+[![CodeQL](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/codeql.yml/badge.svg)](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/codeql.yml)
 [![Combined coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Femmesbef.github.io%2Fclockify-jira-sync%2Fcoverage%2Fcombined-coverage.json&query=%24.combined.coverage_percent&suffix=%25&label=combined%20coverage)](https://emmesbef.github.io/clockify-jira-sync/coverage/)
 
 Desktop app built with Wails (Go backend + Vite frontend) to track time on Jira issues and keep Clockify/Jira worklogs in sync.
