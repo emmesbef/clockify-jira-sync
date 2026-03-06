@@ -123,8 +123,13 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           TAG="${{ inputs.tag_name }}"
+          # If release exists but is published (immutable), convert to draft first
           if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --draft=true 2>/dev/null || true
             gh release upload "$TAG" assets/*.zip assets/*SHA256SUMS.txt --clobber
           else
-            gh release create "$TAG" assets/*.zip assets/*SHA256SUMS.txt --generate-notes
+            gh release create "$TAG" assets/*.zip assets/*SHA256SUMS.txt \
+              --generate-notes --draft
           fi
+          # Publish the release (mark as non-draft)
+          gh release edit "$TAG" --draft=false
