@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   docs:
-    name: Generate documentation
+    name: Verify and generate documentation
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -21,20 +21,13 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Verify documentation freshness
+        shell: bash
+        run: scripts/ci/verify-docs-freshness.sh
+
       - name: Generate documentation bundle
-        run: |
-          set -euo pipefail
-          mkdir -p generated-docs/go
-          cp README.md generated-docs/README.md
-
-          if [ -f .github/copilot-instructions.md ]; then
-            cp .github/copilot-instructions.md generated-docs/copilot-instructions.md
-          fi
-
-          for pkg in $(go list ./...); do
-            out="generated-docs/go/$(echo "$pkg" | tr '/.' '__').txt"
-            go doc -all "$pkg" > "$out"
-          done
+        shell: bash
+        run: scripts/ci/generate-docs-bundle.sh
 
       - name: Upload documentation artifact
         uses: actions/upload-artifact@v4
@@ -55,8 +48,46 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Run Go tests
-        run: go test ./...
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+
+      - name: Run Go tests with coverage profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p coverage
+          go test ./... -coverprofile=coverage/backend.coverprofile
+
+      - name: Run frontend tests with coverage summary
+        working-directory: frontend
+        env:
+          CI: "1"
+        run: npm run test:coverage
+
+      - name: Generate combined coverage summary
+        shell: bash
+        run: scripts/ci/generate-combined-coverage.sh
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: |
+            coverage/backend.coverprofile
+            coverage/combined-coverage.json
+            coverage/combined-coverage-summary.md
+            frontend/coverage/coverage-summary.json
+            frontend/coverage/lcov.info
+            frontend/coverage/lcov-report
+          if-no-files-found: error
 
   build:
     name: Build application
@@ -89,3 +120,70 @@ jobs:
 
       - name: Build Go packages
         run: go build ./...
+
+  pages:
+    name: Prepare GitHub Pages artifact
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      - docs
+      - test
+      - build
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download documentation artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: documentation
+          path: .
+
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage
+          path: .
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Assemble GitHub Pages site
+        shell: bash
+        run: scripts/ci/assemble-pages-site.sh --output site
+
+      - name: Validate Pages site structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f site/index.html
+          test -f site/docs/index.html
+          test -f site/coverage/index.html
+          test -f site/coverage/combined-coverage.json
+          test -f site/coverage/frontend/lcov-report/index.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy-pages:
+    name: Deploy GitHub Pages
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      - pages
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -6,22 +6,31 @@ on:
       - "v*"
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  APP_NAME: clockify-jira-sync
+  WAILS_VERSION: v2.11.0
 
 jobs:
   build:
-    name: Build ${{ matrix.artifact }}
+    name: Build ${{ matrix.asset_id }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: macos-latest
             platform: darwin/universal
-            artifact: clockify-jira-sync-macos
+            asset_id: macos-universal
           - os: windows-latest
             platform: windows/amd64
-            artifact: clockify-jira-sync-windows
+            asset_id: windows-amd64
 
     steps:
       - name: Checkout repository
@@ -41,20 +50,21 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: frontend
-        run: npm ci
+        run: npm ci --no-audit --no-fund
 
-      - name: Install Wails CLI
+      - name: Build release binary (macOS)
+        if: runner.os == 'macOS'
         shell: bash
         run: |
           set -euo pipefail
-          go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          go run github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION} build -clean -platform "${{ matrix.platform }}" -v 1
 
-      - name: Build release binary
-        shell: bash
+      - name: Build release binary (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          set -euo pipefail
-          wails build -clean -platform "${{ matrix.platform }}" -v 1
+          $ErrorActionPreference = "Stop"
+          go run github.com/wailsapp/wails/v2/cmd/wails@${env:WAILS_VERSION} build -clean -platform "${{ matrix.platform }}" -v 1
 
       - name: Package macOS artifact
         if: runner.os == 'macOS'
@@ -63,35 +73,42 @@ jobs:
           set -euo pipefail
           mkdir -p release-assets
           APP_PATH="build/bin/clockify-jira-sync.app"
+          ASSET_PATH="release-assets/${APP_NAME}-${GITHUB_REF_NAME}-${{ matrix.asset_id }}.zip"
           if [ ! -d "$APP_PATH" ]; then
             echo "Expected app bundle not found at $APP_PATH"
             ls -la build/bin || true
             exit 1
           fi
-          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "release-assets/clockify-jira-sync-macos.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$ASSET_PATH"
 
       - name: Package Windows artifact
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
           New-Item -ItemType Directory -Force -Path release-assets | Out-Null
           if (-not (Test-Path "build/bin")) {
             throw "build/bin not found after Wails build."
           }
-          Compress-Archive -Path "build/bin/*" -DestinationPath "release-assets/clockify-jira-sync-windows.zip" -Force
+          $assetPath = "release-assets/$env:APP_NAME-$env:GITHUB_REF_NAME-${{ matrix.asset_id }}.zip"
+          Compress-Archive -Path "build/bin/*" -DestinationPath $assetPath -Force
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: release-assets/*
+          name: ${{ format('{0}-{1}-{2}', env.APP_NAME, github.ref_name, matrix.asset_id) }}
+          path: release-assets/*.zip
           if-no-files-found: error
+          retention-days: 14
 
   publish:
     name: Publish GitHub release
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs:
       - build
+    permissions:
+      contents: write
     steps:
       - name: Download packaged artifacts
         uses: actions/download-artifact@v4
@@ -99,8 +116,40 @@ jobs:
           path: release-assets
           merge-multiple: true
 
+      - name: Validate expected release archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_assets=(
+            "${APP_NAME}-${GITHUB_REF_NAME}-macos-universal.zip"
+            "${APP_NAME}-${GITHUB_REF_NAME}-windows-amd64.zip"
+          )
+          for asset in "${expected_assets[@]}"; do
+            if [ ! -f "release-assets/${asset}" ]; then
+              echo "Missing expected release archive: ${asset}"
+              ls -la release-assets || true
+              exit 1
+            fi
+          done
+
+      - name: Generate release checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHECKSUM_FILE="${APP_NAME}-${GITHUB_REF_NAME}-SHA256SUMS.txt"
+          cd release-assets
+          find . -maxdepth 1 -type f -name '*.zip' -print0 | sort -z | xargs -0 -r sha256sum > "$CHECKSUM_FILE"
+          if [ ! -s "$CHECKSUM_FILE" ]; then
+            echo "No release archives found for checksum generation."
+            exit 1
+          fi
+
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          files: release-assets/*
+          tag_name: ${{ github.ref_name }}
+          files: |
+            release-assets/*.zip
+            release-assets/*SHA256SUMS.txt
+          fail_on_unmatched_files: true
           generate_release_notes: true
