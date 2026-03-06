@@ -2,15 +2,14 @@ name: Release Please
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-please-${{ github.ref }}
+  group: release-please
   cancel-in-progress: true
 
 jobs:
@@ -28,18 +27,14 @@ jobs:
         id: release
         uses: googleapis/release-please-action@v4
         with:
-          # Use a PAT when Actions cannot open PRs; otherwise fall back to the workflow token.
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
-          target-branch: main
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
   build-release-assets:
-    # Reuse the release workflow immediately after Release Please cuts a release.
     name: Build release assets
-    needs:
-      - release-please
-    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    needs: [release-please]
+    if: needs.release-please.outputs.release_created == 'true'
     permissions:
       contents: write
     uses: ./.github/workflows/release.yml

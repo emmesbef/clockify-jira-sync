@@ -1,6 +1,7 @@
 # Clockify ↔ Jira Time Sync
 
 [![CI](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/ci.yml/badge.svg)](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/ci.yml)
+[![Release](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/release-please.yml/badge.svg)](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/release-please.yml)
 [![Combined coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Femmesbef.github.io%2Fclockify-jira-sync%2Fcoverage%2Fcombined-coverage.json&query=%24.combined.coverage_percent&suffix=%25&label=combined%20coverage)](https://emmesbef.github.io/clockify-jira-sync/coverage/)
 
 Desktop app built with Wails (Go backend + Vite frontend) to track time on Jira issues and keep Clockify/Jira worklogs in sync.
@@ -87,7 +88,10 @@ wails build
 - Managed version fields include `wails.json` (`info.productVersion`), `frontend/package.json`, `frontend/package-lock.json`, `docs-site/package.json`, and `docs-site/package-lock.json`.
 - When a release PR is merged, Release Please creates the version tag/GitHub Release and then runs the release workflow to attach macOS and Windows artifacts.
 
-> **Release Please auth:** `release-please.yml` uses `RELEASE_PLEASE_TOKEN` when that secret exists and otherwise falls back to the default GitHub Actions token. If GitHub Actions is not allowed to open PRs in the repository, either enable **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests** or add a `RELEASE_PLEASE_TOKEN` repository secret backed by a token that can write **contents**, **issues**, and **pull requests**.
+> **Release Please auth:** The `release-please.yml` workflow needs permission to create pull requests. You must enable **one** of these options:
+>
+> 1. **Recommended:** Go to **Settings → Actions → General → Workflow permissions** and check **"Allow GitHub Actions to create and approve pull requests"**
+> 2. **Alternative:** Create a Personal Access Token with `contents:write`, `issues:write`, and `pull-requests:write` scopes, then add it as a repository secret named `RELEASE_PLEASE_TOKEN`
 
 ## CI / release / docs pages overview
 

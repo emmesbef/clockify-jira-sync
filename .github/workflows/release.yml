@@ -4,60 +4,27 @@ on:
   workflow_call:
     inputs:
       tag_name:
-        description: Version tag to build and publish assets for.
+        description: Version tag to build and publish assets for
         required: true
         type: string
   workflow_dispatch:
     inputs:
       tag_name:
-        description: Version tag to build and publish assets for (for example v1.2.3).
+        description: "Version tag (e.g. v1.2.3)"
         required: true
         type: string
 
 permissions:
-  contents: read
-
-concurrency:
-  group: release-${{ inputs.tag_name || github.run_id }}
-  cancel-in-progress: false
+  contents: write
 
 env:
   APP_NAME: clockify-jira-sync
-  WAILS_VERSION: v2.11.0
 
 jobs:
-  prepare:
-    name: Resolve release tag
-    runs-on: ubuntu-latest
-    outputs:
-      tag_name: ${{ steps.resolve.outputs.tag_name }}
-    steps:
-      - name: Resolve release tag
-        id: resolve
-        shell: bash
-        env:
-          INPUT_TAG_NAME: ${{ inputs.tag_name }}
-        run: |
-          set -euo pipefail
-          tag_name="${INPUT_TAG_NAME}"
-          if [[ -z "$tag_name" ]]; then
-            echo "A release tag is required."
-            exit 1
-          fi
-          if [[ "$tag_name" != v* ]]; then
-            echo "Release tags must start with 'v': $tag_name"
-            exit 1
-          fi
-          echo "tag_name=$tag_name" >> "$GITHUB_OUTPUT"
-
   build:
     name: Build ${{ matrix.asset_id }}
-    needs:
-      - prepare
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
-    env:
-      RELEASE_TAG: ${{ needs.prepare.outputs.tag_name }}
     strategy:
       fail-fast: false
       matrix:
@@ -68,21 +35,16 @@ jobs:
           - os: windows-latest
             platform: windows/amd64
             asset_id: windows-amd64
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-          ref: ${{ needs.prepare.outputs.tag_name }}
+          ref: ${{ inputs.tag_name }}
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
@@ -92,36 +54,33 @@ jobs:
         working-directory: frontend
         run: npm ci --no-audit --no-fund
 
-      - name: Build release binary (macOS)
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          set -euo pipefail
-          go run github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION} build -clean -platform "${{ matrix.platform }}" -v 1
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
 
-      - name: Build release binary (Windows)
+      - name: Build (macOS)
+        if: runner.os == 'macOS'
+        run: wails build -clean -platform "${{ matrix.platform }}"
+
+      - name: Build (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          go run github.com/wailsapp/wails/v2/cmd/wails@${env:WAILS_VERSION} build -clean -platform "${{ matrix.platform }}" -v 1
+        run: wails build -clean -platform "${{ matrix.platform }}"
 
-      - name: Package macOS artifact
+      - name: Package (macOS)
         if: runner.os == 'macOS'
-        shell: bash
         run: |
           set -euo pipefail
           mkdir -p release-assets
           APP_PATH="build/bin/clockify-jira-sync.app"
-          ASSET_PATH="release-assets/${APP_NAME}-${RELEASE_TAG}-${{ matrix.asset_id }}.zip"
           if [ ! -d "$APP_PATH" ]; then
-            echo "Expected app bundle not found at $APP_PATH"
-            ls -la build/bin || true
+            echo "::error::App bundle not found at $APP_PATH"
+            ls -la build/bin/ || true
             exit 1
           fi
-          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$ASSET_PATH"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" \
+            "release-assets/${APP_NAME}-${{ inputs.tag_name }}-${{ matrix.asset_id }}.zip"
 
-      - name: Package Windows artifact
+      - name: Package (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
@@ -130,71 +89,42 @@ jobs:
           if (-not (Test-Path "build/bin")) {
             throw "build/bin not found after Wails build."
           }
-          $assetPath = "release-assets/$env:APP_NAME-$env:RELEASE_TAG-${{ matrix.asset_id }}.zip"
-          Compress-Archive -Path "build/bin/*" -DestinationPath $assetPath -Force
+          Compress-Archive -Path "build/bin/*" `
+            -DestinationPath "release-assets/$env:APP_NAME-${{ inputs.tag_name }}-${{ matrix.asset_id }}.zip" -Force
 
-      - name: Upload release artifact
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ format('{0}-{1}-{2}', env.APP_NAME, needs.prepare.outputs.tag_name, matrix.asset_id) }}
+          name: release-${{ matrix.asset_id }}
           path: release-assets/*.zip
           if-no-files-found: error
           retention-days: 14
 
   publish:
-    name: Publish GitHub release
+    name: Upload release assets
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs:
-      - prepare
-      - build
-    permissions:
-      contents: write
-    env:
-      RELEASE_TAG: ${{ needs.prepare.outputs.tag_name }}
+    needs: [build]
     steps:
-      - name: Download packaged artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          path: release-assets
+          path: assets
           merge-multiple: true
 
-      - name: Validate expected release archives
-        shell: bash
+      - name: Generate checksums
         run: |
-          set -euo pipefail
-          expected_assets=(
-            "${APP_NAME}-${RELEASE_TAG}-macos-universal.zip"
-            "${APP_NAME}-${RELEASE_TAG}-windows-amd64.zip"
-          )
-          for asset in "${expected_assets[@]}"; do
-            if [ ! -f "release-assets/${asset}" ]; then
-              echo "Missing expected release archive: ${asset}"
-              ls -la release-assets || true
-              exit 1
-            fi
-          done
+          cd assets
+          sha256sum *.zip > "${APP_NAME}-${{ inputs.tag_name }}-SHA256SUMS.txt"
 
-      - name: Generate release checksums
-        shell: bash
-        run: |
-          set -euo pipefail
-          CHECKSUM_FILE="${APP_NAME}-${RELEASE_TAG}-SHA256SUMS.txt"
-          cd release-assets
-          find . -maxdepth 1 -type f -name '*.zip' -print0 | sort -z | xargs -0 -r sha256sum > "$CHECKSUM_FILE"
-          if [ ! -s "$CHECKSUM_FILE" ]; then
-            echo "No release archives found for checksum generation."
-            exit 1
-          fi
-
-      - name: Publish release assets
-        shell: bash
+      - name: Upload to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          set -euo pipefail
-          if gh release view "$RELEASE_TAG" --json id >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" release-assets/*.zip release-assets/*SHA256SUMS.txt --clobber
+          TAG="${{ inputs.tag_name }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" assets/*.zip assets/*SHA256SUMS.txt --clobber
           else
-            gh release create "$RELEASE_TAG" release-assets/*.zip release-assets/*SHA256SUMS.txt --generate-notes --verify-tag
+            gh release create "$TAG" assets/*.zip assets/*SHA256SUMS.txt --generate-notes
           fi
