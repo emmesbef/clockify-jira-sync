@@ -1,12 +1,8 @@
 name: Release
 
 on:
-  workflow_call:
-    inputs:
-      tag_name:
-        description: Version tag to build and publish assets for
-        required: true
-        type: string
+  release:
+    types: [created]
   workflow_dispatch:
     inputs:
       tag_name:
@@ -19,6 +15,8 @@ permissions:
 
 env:
   APP_NAME: clockify-jira-sync
+  # Resolve tag from either release event or manual dispatch
+  RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag_name }}
 
 jobs:
   build:
@@ -38,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag_name }}
+          ref: ${{ github.event.release.tag_name || inputs.tag_name }}
 
       - uses: actions/setup-go@v5
         with:
@@ -78,7 +76,7 @@ jobs:
             exit 1
           fi
           ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" \
-            "release-assets/${APP_NAME}-${{ inputs.tag_name }}-${{ matrix.asset_id }}.zip"
+            "release-assets/${APP_NAME}-${RELEASE_TAG}-${{ matrix.asset_id }}.zip"
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
@@ -90,7 +88,7 @@ jobs:
             throw "build/bin not found after Wails build."
           }
           Compress-Archive -Path "build/bin/*" `
-            -DestinationPath "release-assets/$env:APP_NAME-${{ inputs.tag_name }}-${{ matrix.asset_id }}.zip" -Force
+            -DestinationPath "release-assets/$env:APP_NAME-$env:RELEASE_TAG-${{ matrix.asset_id }}.zip" -Force
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -115,15 +113,15 @@ jobs:
       - name: Generate checksums
         run: |
           cd assets
-          sha256sum *.zip > "${APP_NAME}-${{ inputs.tag_name }}-SHA256SUMS.txt"
+          sha256sum *.zip > "${APP_NAME}-${RELEASE_TAG}-SHA256SUMS.txt"
 
       - name: Upload to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          TAG="${{ inputs.tag_name }}"
-          # If release exists but is published (immutable), convert to draft first
+          TAG="${RELEASE_TAG}"
+          # Convert to draft so we can upload assets (published releases are immutable)
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" --draft=true 2>/dev/null || true
             gh release upload "$TAG" assets/*.zip assets/*SHA256SUMS.txt --clobber
@@ -131,5 +129,5 @@ jobs:
             gh release create "$TAG" assets/*.zip assets/*SHA256SUMS.txt \
               --generate-notes --draft
           fi
-          # Publish the release (mark as non-draft)
+          # Publish the release
           gh release edit "$TAG" --draft=false
