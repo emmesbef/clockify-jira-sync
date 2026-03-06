@@ -26,6 +26,10 @@ export function GetHistoryFromClockify(arg1, arg2) {
   return window['go']['app']['App']['GetHistoryFromClockify'](arg1, arg2);
 }
 
+export function GetIntegrationStatus() {
+  return window['go']['app']['App']['GetIntegrationStatus']();
+}
+
 export function GetMyTickets() {
   return window['go']['app']['App']['GetMyTickets']();
 }

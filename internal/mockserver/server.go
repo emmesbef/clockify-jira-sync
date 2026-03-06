@@ -68,6 +68,15 @@ func Start() *httptest.Server {
 			return
 		}
 
+		// Jira connection check
+		if r.URL.Path == "/rest/api/2/myself" {
+			json.NewEncoder(w).Encode(map[string]string{
+				"accountId":    "mock-account-id",
+				"emailAddress": "mock@example.com",
+			})
+			return
+		}
+
 		// Jira Add Worklog
 		if strings.HasSuffix(r.URL.Path, "worklog") && r.Method == "POST" {
 			w.WriteHeader(http.StatusCreated)

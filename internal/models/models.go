@@ -4,24 +4,24 @@ import "time"
 
 // JiraTicket represents a Jira issue
 type JiraTicket struct {
-	Key      string `json:"key"`
-	Summary  string `json:"summary"`
-	Status   string `json:"status"`
-	Assignee string `json:"assignee"`
+	Key       string `json:"key"`
+	Summary   string `json:"summary"`
+	Status    string `json:"status"`
+	Assignee  string `json:"assignee"`
 	IssueType string `json:"issueType"`
 }
 
 // TimeEntry represents a tracked time entry (synced to both Clockify + Jira)
 type TimeEntry struct {
-	ID             string    `json:"id"`
-	TicketKey      string    `json:"ticketKey"`
-	TicketSummary  string    `json:"ticketSummary"`
-	Description    string    `json:"description"`
-	Start          time.Time `json:"start"`
-	End            time.Time `json:"end"`
-	Duration       int64     `json:"duration"` // seconds
-	ClockifyID     string    `json:"clockifyId"`
-	JiraWorklogID  string    `json:"jiraWorklogId"`
+	ID            string    `json:"id"`
+	TicketKey     string    `json:"ticketKey"`
+	TicketSummary string    `json:"ticketSummary"`
+	Description   string    `json:"description"`
+	Start         time.Time `json:"start"`
+	End           time.Time `json:"end"`
+	Duration      int64     `json:"duration"` // seconds
+	ClockifyID    string    `json:"clockifyId"`
+	JiraWorklogID string    `json:"jiraWorklogId"`
 }
 
 // TimerState represents the current running timer
@@ -41,13 +41,21 @@ type BranchDetection struct {
 	IDE        string `json:"ide"`
 }
 
+// IntegrationStatus reports real-time connectivity state for external services.
+type IntegrationStatus struct {
+	ClockifyConnected bool   `json:"clockifyConnected"`
+	ClockifyError     string `json:"clockifyError,omitempty"`
+	JiraConnected     bool   `json:"jiraConnected"`
+	JiraError         string `json:"jiraError,omitempty"`
+}
+
 // ManualEntryRequest is the request body for creating a manual time entry
 type ManualEntryRequest struct {
 	TicketKey   string `json:"ticketKey"`
 	Description string `json:"description"`
-	Date        string `json:"date"`        // YYYY-MM-DD
-	StartTime   string `json:"startTime"`   // HH:MM
-	EndTime     string `json:"endTime"`     // HH:MM
+	Date        string `json:"date"`      // YYYY-MM-DD
+	StartTime   string `json:"startTime"` // HH:MM
+	EndTime     string `json:"endTime"`   // HH:MM
 }
 
 // UpdateEntryRequest is the request body for updating a time entry

@@ -161,6 +161,30 @@ func (c *Client) GetIssue(key string) (*models.JiraTicket, error) {
 	return t, nil
 }
 
+// Ping checks whether Jira credentials/base URL are valid.
+func (c *Client) Ping() error {
+	apiURL := fmt.Sprintf("%s/rest/api/2/myself", c.baseURL)
+
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return err
+	}
+	c.setHeaders(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("jira API error %d: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
 // worklogRequest is the request body for creating/updating a worklog
 type worklogRequest struct {
 	Comment          string `json:"comment,omitempty"`

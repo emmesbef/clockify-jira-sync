@@ -15,6 +15,8 @@ export function GetHistory():Promise<Array<models.TimeEntry>>;
 
 export function GetHistoryFromClockify(arg1:string,arg2:string):Promise<Array<models.TimeEntry>>;
 
+export function GetIntegrationStatus():Promise<models.IntegrationStatus>;
+
 export function GetMyTickets():Promise<Array<models.JiraTicket>>;
 
 export function GetTimerStatus():Promise<models.TimerState>;

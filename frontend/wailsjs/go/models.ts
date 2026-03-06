@@ -45,6 +45,24 @@ export namespace models {
 	        this.ide = source["ide"];
 	    }
 	}
+	export class IntegrationStatus {
+	    clockifyConnected: boolean;
+	    clockifyError?: string;
+	    jiraConnected: boolean;
+	    jiraError?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new IntegrationStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.clockifyConnected = source["clockifyConnected"];
+	        this.clockifyError = source["clockifyError"];
+	        this.jiraConnected = source["jiraConnected"];
+	        this.jiraError = source["jiraError"];
+	    }
+	}
 	export class JiraTicket {
 	    key: string;
 	    summary: string;

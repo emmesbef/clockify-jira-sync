@@ -84,6 +84,26 @@ func (a *App) SaveConfig(newCfg config.Config) error {
 	return nil
 }
 
+// GetIntegrationStatus checks whether Clockify and Jira are currently reachable
+// with the configured credentials.
+func (a *App) GetIntegrationStatus() models.IntegrationStatus {
+	status := models.IntegrationStatus{}
+
+	if err := a.clockify.Init(); err != nil {
+		status.ClockifyError = err.Error()
+	} else {
+		status.ClockifyConnected = true
+	}
+
+	if err := a.jira.Ping(); err != nil {
+		status.JiraError = err.Error()
+	} else {
+		status.JiraConnected = true
+	}
+
+	return status
+}
+
 // Startup is called when the Wails app starts
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx

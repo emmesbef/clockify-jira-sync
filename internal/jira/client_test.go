@@ -91,3 +91,22 @@ func TestAddWorklog(t *testing.T) {
 		t.Errorf("Expected id wl-999, got %s", id)
 	}
 }
+
+func TestPing(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/rest/api/2/myself" {
+			t.Errorf("Unexpected path: %s", r.URL.Path)
+		}
+		if r.Method != "GET" {
+			t.Errorf("Expected GET, got %s", r.Method)
+		}
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"accountId": "abc123"})
+	}))
+	defer mockServer.Close()
+
+	client := NewClient(mockServer.URL, "test@example.com", "token")
+	if err := client.Ping(); err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+}
