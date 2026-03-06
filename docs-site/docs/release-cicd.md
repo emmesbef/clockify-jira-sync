@@ -25,6 +25,11 @@ GitHub Pages now uses the `docs-site/` Docusaurus production build as the primar
 
 Release Please manages release PRs in [`release-please.yml`](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/release-please.yml). When a release PR is merged, it creates the `v*` tag and GitHub Release, then invokes [`release.yml`](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/release.yml) as a reusable workflow to build and upload release assets. The same workflow can also be run manually for an existing tag with `workflow_dispatch`.
 
+`release-please.yml` uses `RELEASE_PLEASE_TOKEN` when that secret is configured and otherwise falls back to the default GitHub Actions token. For release PR creation to work, choose one of these repository setups:
+
+1. Enable **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests**.
+2. Or add a `RELEASE_PLEASE_TOKEN` repository secret backed by a token that can write **contents**, **issues**, and **pull requests**.
+
 Current release behavior:
 
 - Builds macOS and Windows Wails artifacts.

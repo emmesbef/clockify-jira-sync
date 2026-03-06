@@ -87,6 +87,8 @@ wails build
 - Managed version fields include `wails.json` (`info.productVersion`), `frontend/package.json`, `frontend/package-lock.json`, `docs-site/package.json`, and `docs-site/package-lock.json`.
 - When a release PR is merged, Release Please creates the version tag/GitHub Release and then runs the release workflow to attach macOS and Windows artifacts.
 
+> **Release Please auth:** `release-please.yml` uses `RELEASE_PLEASE_TOKEN` when that secret exists and otherwise falls back to the default GitHub Actions token. If GitHub Actions is not allowed to open PRs in the repository, either enable **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests** or add a `RELEASE_PLEASE_TOKEN` repository secret backed by a token that can write **contents**, **issues**, and **pull requests**.
+
 ## CI / release / docs pages overview
 
 - **CI workflow**: https://github.com/emmesbef/clockify-jira-sync/actions/workflows/ci.yml
