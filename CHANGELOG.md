@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/emmesbef/clockify-jira-sync/compare/v1.7.1...v1.8.0) (2026-03-07)
+
+
+### Features
+
+* key prefix search and editable description ([a70bc6b](https://github.com/emmesbef/clockify-jira-sync/commit/a70bc6bf4c2ba66607da482169f771478803caf2))
+
 ## [1.7.1](https://github.com/emmesbef/clockify-jira-sync/compare/v1.7.0...v1.7.1) (2026-03-07)
 
 
