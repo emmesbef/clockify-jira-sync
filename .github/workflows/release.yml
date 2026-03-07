@@ -57,6 +57,16 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
 
+      - name: Set app version in wails.json
+        shell: bash
+        run: |
+          VERSION="${{ inputs.tag_name }}"
+          VERSION="${VERSION#v}"
+          # Update productVersion so the built app bundle (Info.plist) reports
+          # the correct version — required for `brew upgrade --cask` to work.
+          jq --arg v "$VERSION" '.info.productVersion = $v' wails.json > wails.tmp \
+            && mv wails.tmp wails.json
+
       - name: Build (macOS)
         if: runner.os == 'macOS'
         run: |
