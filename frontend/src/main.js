@@ -106,12 +106,9 @@ function initTicketSearch() {
     input.addEventListener('input', (e) => {
         clearTimeout(searchTimeout);
 
-        // If a ticket is selected and user starts typing, clear selection
-        // and keep only the newly typed character as the query
+        // If a ticket is already selected, let user edit description freely
         if (selectedTicket) {
-            const typed = e.inputType === 'deleteContentBackward' ? '' : (e.data || '');
-            clearTicket(); // clear everything including input
-            input.value = typed;
+            return;
         }
 
         const query = input.value.trim();
@@ -268,7 +265,8 @@ async function startTimer() {
 
     try {
         const projectId = document.getElementById('project-select').value || '';
-        const state = await App.StartTimer(selectedTicket.key, projectId);
+        const description = document.getElementById('ticket-search').value.trim();
+        const state = await App.StartTimer(selectedTicket.key, projectId, description);
         timerStartTime = new Date(state.startedAt);
         showTimerRunning(selectedTicket.key, selectedTicket.summary);
         showToast(`Timer started for ${selectedTicket.key}`, 'success');

@@ -220,7 +220,7 @@ func (a *App) SearchTickets(query string) ([]models.JiraTicket, error) {
 // --- Timer Methods ---
 
 // StartTimer begins tracking time for a ticket
-func (a *App) StartTimer(ticketKey string, projectID string) (*models.TimerState, error) {
+func (a *App) StartTimer(ticketKey string, projectID string, description string) (*models.TimerState, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -234,9 +234,14 @@ func (a *App) StartTimer(ticketKey string, projectID string) (*models.TimerState
 		return nil, fmt.Errorf("failed to get ticket: %w", err)
 	}
 
+	// Use provided description or fall back to key + summary
+	clockifyDesc := description
+	if clockifyDesc == "" {
+		clockifyDesc = fmt.Sprintf("%s %s", ticketKey, ticket.Summary)
+	}
+
 	// Start in Clockify
-	description := fmt.Sprintf("%s %s", ticketKey, ticket.Summary)
-	clockifyID, err := a.clockify.StartTimer(description, projectID)
+	clockifyID, err := a.clockify.StartTimer(clockifyDesc, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start Clockify timer: %w", err)
 	}

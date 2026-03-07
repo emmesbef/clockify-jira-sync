@@ -474,7 +474,7 @@ func (m *appFlowMock) writeHandlerError(w http.ResponseWriter, format string, ar
 func TestStartTimerAndStopTimerLifecycle(t *testing.T) {
 	app, mock := newFlowApp(t)
 
-	timer, err := app.StartTimer("PROJ-101", "")
+	timer, err := app.StartTimer("PROJ-101", "", "")
 	if err != nil {
 		t.Fatalf("StartTimer returned error: %v", err)
 	}
@@ -875,15 +875,15 @@ func TestGetMyTicketsAndSearchTickets(t *testing.T) {
 	if len(searches) != 2 {
 		t.Fatalf("expected exactly two Jira search calls, got %d", len(searches))
 	}
-	if !strings.Contains(searches[1], `summary ~ "PROJ"`) || !strings.Contains(searches[1], `key = "PROJ"`) {
-		t.Fatalf("expected Jira search JQL to include summary and key matching, got %q", searches[1])
+	if !strings.Contains(searches[1], `project = "PROJ"`) {
+		t.Fatalf("expected Jira search JQL to include project filter, got %q", searches[1])
 	}
 }
 
 func TestShutdownStopsRunningTimer(t *testing.T) {
 	app, mock := newFlowApp(t)
 
-	timer, err := app.StartTimer("PROJ-303", "")
+	timer, err := app.StartTimer("PROJ-303", "", "")
 	if err != nil {
 		t.Fatalf("StartTimer returned error: %v", err)
 	}

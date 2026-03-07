@@ -66,8 +66,8 @@ export function SetMockMode(arg1) {
   return window['go']['app']['App']['SetMockMode'](arg1);
 }
 
-export function StartTimer(arg1, arg2) {
-  return window['go']['app']['App']['StartTimer'](arg1, arg2);
+export function StartTimer(arg1, arg2, arg3) {
+  return window['go']['app']['App']['StartTimer'](arg1, arg2, arg3);
 }
 
 export function StopTimer() {

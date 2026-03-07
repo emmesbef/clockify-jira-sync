@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -96,14 +97,71 @@ func (c *Client) GetMyIssues() ([]models.JiraTicket, error) {
 	return c.searchWithJQL(jql, 50)
 }
 
+// keyWithDashPattern matches "PROJ-", "PROJ-1", "PROJ-123" (case-insensitive)
+var keyWithDashPattern = regexp.MustCompile(`(?i)^([A-Z][A-Z0-9]+)-(\d*)$`)
+
+// projectKeyPattern matches "PROJ", "PRO" (uppercase only — likely a project key)
+var projectKeyPattern = regexp.MustCompile(`^[A-Z][A-Z0-9]+$`)
+
 // SearchIssues searches for Jira issues matching a query.
-// It searches both summary text and issue key so users can type
-// either a ticket key like "PROJ-123" or keywords like "login page".
+// It detects key-like patterns (e.g., PROJ, PROJ-1) and uses project-based
+// JQL with prefix filtering. For plain text queries it searches summary and description.
 func (c *Client) SearchIssues(query string) ([]models.JiraTicket, error) {
-	escaped := escapeJQLText(query)
+	trimmed := strings.TrimSpace(query)
+
+	// Key with dash: "PROJ-" or "PROJ-123"
+	if matches := keyWithDashPattern.FindStringSubmatch(trimmed); matches != nil {
+		project := strings.ToUpper(matches[1])
+		number := matches[2]
+
+		var jql string
+		if number != "" {
+			jql = fmt.Sprintf(
+				`project = "%s" AND key >= "%s-%s" AND status != Done ORDER BY key ASC`,
+				project, project, number,
+			)
+		} else {
+			jql = fmt.Sprintf(
+				`project = "%s" AND status != Done ORDER BY updated DESC`,
+				project,
+			)
+		}
+
+		results, err := c.searchWithJQL(jql, 100)
+		if err == nil {
+			if number != "" {
+				prefix := project + "-" + number
+				var filtered []models.JiraTicket
+				for _, t := range results {
+					if strings.HasPrefix(strings.ToUpper(t.Key), prefix) {
+						filtered = append(filtered, t)
+					}
+				}
+				return filtered, nil
+			}
+			return results, nil
+		}
+		// Project might not exist — fall through to text search
+	}
+
+	// All-uppercase letters: try as a project key (e.g., "PROJ", "PRO")
+	if projectKeyPattern.MatchString(trimmed) {
+		jql := fmt.Sprintf(
+			`project = "%s" AND status != Done ORDER BY updated DESC`,
+			trimmed,
+		)
+		results, err := c.searchWithJQL(jql, 50)
+		if err == nil && len(results) > 0 {
+			return results, nil
+		}
+		// Not a valid project — fall through to text search
+	}
+
+	// Text search on summary and description
+	escaped := escapeJQLText(trimmed)
 	jql := fmt.Sprintf(
-		`(summary ~ "%s" OR description ~ "%s" OR key = "%s") AND status != Done ORDER BY updated DESC`,
-		escaped, escaped, query,
+		`(summary ~ "%s" OR description ~ "%s") AND status != Done ORDER BY updated DESC`,
+		escaped, escaped,
 	)
 	return c.searchWithJQL(jql, 20)
 }

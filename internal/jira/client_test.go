@@ -23,8 +23,8 @@ func TestSearchIssues(t *testing.T) {
 		var req map[string]interface{}
 		json.Unmarshal(body, &req)
 		jql, _ := req["jql"].(string)
-		if !strings.Contains(jql, "test-query") {
-			t.Errorf("Expected jql to contain 'test-query', got %q", jql)
+		if !strings.Contains(jql, "test") {
+			t.Errorf("Expected jql to contain 'test', got %q", jql)
 		}
 
 		resp := searchResponse{

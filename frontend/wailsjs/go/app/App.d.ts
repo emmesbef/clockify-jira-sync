@@ -29,7 +29,7 @@ export function SearchTickets(arg1:string):Promise<Array<models.JiraTicket>>;
 
 export function SetMockMode(arg1:string):Promise<void>;
 
-export function StartTimer(arg1:string,arg2:string):Promise<models.TimerState>;
+export function StartTimer(arg1:string,arg2:string,arg3:string):Promise<models.TimerState>;
 
 export function StopTimer():Promise<models.TimeEntry>;
 
