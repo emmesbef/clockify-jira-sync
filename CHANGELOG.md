@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.6.0](https://github.com/emmesbef/clockify-jira-sync/compare/v1.5.0...v1.6.0) (2026-03-07)
+
+
+### Features
+
+* auto theme detection, settings control, macOS tray icon ([ad12164](https://github.com/emmesbef/clockify-jira-sync/commit/ad1216426db2bf5adbf52bc7449d3bc1efea7c22))
+
+
+### Bug Fixes
+
+* use lowercase JSON property names for workspace dropdown ([2034540](https://github.com/emmesbef/clockify-jira-sync/commit/2034540da5a8631337581e0eea6679915ffcc7c9))
+
 ## [1.5.0](https://github.com/emmesbef/clockify-jira-sync/compare/v1.4.3...v1.5.0) (2026-03-07)
 
 
