@@ -183,7 +183,7 @@ jobs:
 
       - name: Compute SHA256 and update cask via API
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
           TAG="${{ inputs.tag_name }}"
           VERSION="${TAG#v}"
