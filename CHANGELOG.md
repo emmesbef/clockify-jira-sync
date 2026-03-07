@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.2](https://github.com/emmesbef/clockify-jira-sync/compare/v1.4.1...v1.4.2) (2026-03-07)
+
+
+### Bug Fixes
+
+* use RELEASE_PLEASE_TOKEN for homebrew-tap API calls ([d410dfc](https://github.com/emmesbef/clockify-jira-sync/commit/d410dfc57b7df4cafe676f525d52001c75f6f359))
+
 ## [1.4.1](https://github.com/emmesbef/clockify-jira-sync/compare/v1.4.0...v1.4.1) (2026-03-07)
 
 
