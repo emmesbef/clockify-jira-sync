@@ -147,11 +147,13 @@
             <!-- Settings View -->
             <div id="settings-view" class="main-view hidden" style="display: none;">
                 <div class="form-section" style="gap: 16px;">
-                    <div class="form-group">
+                    <div class="form-group" style="gap: 6px;">
                         <label class="form-label">Theme Appearance</label>
-                        <button id="theme-toggle" class="btn btn-secondary btn-sm" style="width: fit-content;">
-                            <span class="btn-icon">🎨</span> Toggle Light/Dark Mode
-                        </button>
+                        <select id="theme-select" class="input input-dark input-sm" style="width: fit-content; min-width: 160px;">
+                            <option value="auto">🖥 Automatic (System)</option>
+                            <option value="light">☀️ Light</option>
+                            <option value="dark">🌙 Dark</option>
+                        </select>
                     </div>
 
                     <div class="separator-line" style="margin: 8px 0;"></div>
@@ -208,6 +210,12 @@
                             <span class="ticket-status" id="status-jira"
                                 style="background: rgba(156, 163, 175, 0.2); color: var(--text-secondary); padding: 2px 8px; border-radius: 12px;">Checking...</span>
                         </div>
+                    </div>
+
+                    <div class="separator-line" style="margin: 8px 0;"></div>
+
+                    <div class="form-group" style="text-align: center;">
+                        <span id="app-version" class="muted-text" style="font-size: 11px;">clockify-jira-sync</span>
                     </div>
                 </div>
             </div>

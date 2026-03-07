@@ -38,22 +38,60 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ===== Theme =====
-function initTheme() {
-    const saved = localStorage.getItem('theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', saved);
-    updateThemeIcon(saved);
+const systemDarkQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
+function getEffectiveTheme(pref) {
+    if (pref === 'auto') return systemDarkQuery.matches ? 'dark' : 'light';
+    return pref;
+}
+
+function applyTheme(pref) {
+    const effective = getEffectiveTheme(pref);
+    document.documentElement.setAttribute('data-theme', effective);
+    updateThemeIcon(pref, effective);
+}
+
+function initTheme() {
+    const saved = localStorage.getItem('theme-pref') || 'auto';
+    applyTheme(saved);
+
+    // Titlebar button cycles: auto → light → dark → auto
     document.getElementById('theme-toggle').addEventListener('click', () => {
-        const current = document.documentElement.getAttribute('data-theme');
-        const next = current === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', next);
-        localStorage.setItem('theme', next);
-        updateThemeIcon(next);
+        const current = localStorage.getItem('theme-pref') || 'auto';
+        const cycle = { auto: 'light', light: 'dark', dark: 'auto' };
+        const next = cycle[current] || 'auto';
+        localStorage.setItem('theme-pref', next);
+        applyTheme(next);
+        // Sync settings dropdown if visible
+        const sel = document.getElementById('theme-select');
+        if (sel) sel.value = next;
+    });
+
+    // Settings dropdown
+    const sel = document.getElementById('theme-select');
+    if (sel) {
+        sel.value = saved;
+        sel.addEventListener('change', () => {
+            const pref = sel.value;
+            localStorage.setItem('theme-pref', pref);
+            applyTheme(pref);
+        });
+    }
+
+    // Listen for OS theme changes (only matters in auto mode)
+    systemDarkQuery.addEventListener('change', () => {
+        const pref = localStorage.getItem('theme-pref') || 'auto';
+        if (pref === 'auto') applyTheme('auto');
     });
 }
 
-function updateThemeIcon(theme) {
-    document.querySelector('.theme-icon').textContent = theme === 'dark' ? '☀️' : '🌙';
+function updateThemeIcon(pref, effective) {
+    const icon = document.querySelector('.theme-icon');
+    if (!icon) return;
+    const icons = { auto: '🖥', light: '☀️', dark: '🌙' };
+    icon.textContent = icons[pref] || '🖥';
+    const el = document.getElementById('theme-toggle');
+    if (el) el.title = `Theme: ${pref} (${effective})`;
 }
 
 // ===== Ticket Search =====
@@ -633,6 +671,14 @@ async function fetchAndPopulateWorkspaces(apiKey, selectedId) {
 }
 
 function initSettings() {
+    // Display app version
+    if (App.GetVersion) {
+        App.GetVersion().then(v => {
+            const el = document.getElementById('app-version');
+            if (el) el.textContent = `clockify-jira-sync v${v}`;
+        }).catch(() => {});
+    }
+
     // Populate form if backend supports getting config
     if (App.GetConfig) {
         App.GetConfig().then(cfg => {

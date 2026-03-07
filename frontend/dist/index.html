@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-  <script type="module" crossorigin src="/assets/index.a28de1fe.js"></script>
+  <script type="module" crossorigin src="/assets/index.22dbada8.js"></script>
   <link rel="stylesheet" href="/assets/index.15ce657b.css">
 </head>
 
@@ -149,11 +149,13 @@
             <!-- Settings View -->
             <div id="settings-view" class="main-view hidden" style="display: none;">
                 <div class="form-section" style="gap: 16px;">
-                    <div class="form-group">
+                    <div class="form-group" style="gap: 6px;">
                         <label class="form-label">Theme Appearance</label>
-                        <button id="theme-toggle" class="btn btn-secondary btn-sm" style="width: fit-content;">
-                            <span class="btn-icon">🎨</span> Toggle Light/Dark Mode
-                        </button>
+                        <select id="theme-select" class="input input-dark input-sm" style="width: fit-content; min-width: 160px;">
+                            <option value="auto">🖥 Automatic (System)</option>
+                            <option value="light">☀️ Light</option>
+                            <option value="dark">🌙 Dark</option>
+                        </select>
                     </div>
 
                     <div class="separator-line" style="margin: 8px 0;"></div>
@@ -168,9 +170,10 @@
                         </div>
 
                         <div class="form-group" style="gap: 4px;">
-                            <label class="muted-text" style="font-size: 11px;">Clockify Workspace ID</label>
-                            <input type="text" id="setting-clockify-ws" class="input input-dark input-sm"
-                                placeholder="e.g. 60f1a..." />
+                            <label class="muted-text" style="font-size: 11px;">Clockify Workspace</label>
+                            <select id="setting-clockify-ws" class="input input-dark input-sm">
+                                <option value="">— enter API key to load —</option>
+                            </select>
                         </div>
 
                         <div class="form-group" style="gap: 4px; margin-top: 8px;">
@@ -202,13 +205,19 @@
                         <div class="row-between">
                             <span style="font-size: 13px;">Clockify</span>
                             <span class="ticket-status" id="status-clockify"
-                                style="background: rgba(34, 197, 94, 0.15); color: var(--success); padding: 2px 8px; border-radius: 12px;">Connected</span>
+                                style="background: rgba(156, 163, 175, 0.2); color: var(--text-secondary); padding: 2px 8px; border-radius: 12px;">Checking...</span>
                         </div>
                         <div class="row-between" style="margin-top: 8px;">
                             <span style="font-size: 13px;">Jira Software</span>
                             <span class="ticket-status" id="status-jira"
-                                style="background: rgba(34, 197, 94, 0.15); color: var(--success); padding: 2px 8px; border-radius: 12px;">Connected</span>
+                                style="background: rgba(156, 163, 175, 0.2); color: var(--text-secondary); padding: 2px 8px; border-radius: 12px;">Checking...</span>
                         </div>
+                    </div>
+
+                    <div class="separator-line" style="margin: 8px 0;"></div>
+
+                    <div class="form-group" style="text-align: center;">
+                        <span id="app-version" class="muted-text" style="font-size: 11px;">clockify-jira-sync</span>
                     </div>
                 </div>
             </div>

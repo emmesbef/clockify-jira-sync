@@ -60,7 +60,10 @@ jobs:
       - name: Build (macOS)
         if: runner.os == 'macOS'
         run: |
-          wails build -clean -platform "${{ matrix.platform }}"
+          VERSION="${{ inputs.tag_name }}"
+          VERSION="${VERSION#v}"
+          wails build -clean -platform "${{ matrix.platform }}" \
+            -ldflags "-X main.version=${VERSION}"
           # Ad-hoc sign with entitlements so right-click → Open works on macOS.
           # Full notarization (which removes the prompt entirely) requires an
           # Apple Developer account.
@@ -74,7 +77,9 @@ jobs:
       - name: Build (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: wails build -clean -platform "${{ matrix.platform }}"
+        run: |
+          $version = "${{ inputs.tag_name }}" -replace '^v',''
+          wails build -clean -platform "${{ matrix.platform }}" -ldflags "-X main.version=$version"
 
       - name: Package (macOS)
         if: runner.os == 'macOS'

@@ -24,7 +24,7 @@ func TestSaveConfigPersistsWorkspace(t *testing.T) {
 		JiraBaseURL:       "https://example.atlassian.net",
 		JiraEmail:         "old@example.com",
 		JiraAPIToken:      "old-token",
-	})
+	}, "test")
 	a.SetMockMode(mockSrv.URL)
 
 	err := a.SaveConfig(config.Config{
@@ -63,7 +63,7 @@ func TestGetIntegrationStatusSuccess(t *testing.T) {
 		JiraBaseURL:       "https://unused.atlassian.net",
 		JiraEmail:         "user@example.com",
 		JiraAPIToken:      "token",
-	})
+	}, "test")
 	a.SetMockMode(mockSrv.URL)
 
 	status := a.GetIntegrationStatus()
@@ -83,7 +83,7 @@ func TestGetIntegrationStatusFailure(t *testing.T) {
 		JiraBaseURL:       "http://127.0.0.1:1",
 		JiraEmail:         "user@example.com",
 		JiraAPIToken:      "token",
-	})
+	}, "test")
 	a.clockify.SetBaseURL("http://127.0.0.1:1")
 	a.jira.SetBaseURL("http://127.0.0.1:1")
 

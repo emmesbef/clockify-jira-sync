@@ -111,7 +111,7 @@ func newFlowApp(t *testing.T) (*App, *appFlowMock) {
 		JiraBaseURL:       "https://jira.example.com",
 		JiraEmail:         "user@example.com",
 		JiraAPIToken:      "token",
-	})
+	}, "test")
 	app.SetMockMode(mock.server.URL)
 
 	if err := app.clockify.Init(); err != nil {

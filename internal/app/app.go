@@ -15,30 +15,35 @@ import (
 	"clockify-jira-sync/internal/detector"
 	"clockify-jira-sync/internal/jira"
 	"clockify-jira-sync/internal/models"
+	"clockify-jira-sync/internal/tray"
 )
 
 // App is the main application struct exposed to the Wails frontend
 type App struct {
 	ctx      context.Context
 	cfg      *config.Config
+	version  string
 	clockify *clockify.Client
 	jira     *jira.Client
 	detector *detector.Detector
 
-	mu      sync.RWMutex
-	timer   models.TimerState
-	entries []models.TimeEntry // local cache of entries
-	mockURL string             // url for local testing (if enabled)
+	mu            sync.RWMutex
+	timer         models.TimerState
+	entries       []models.TimeEntry // local cache of entries
+	mockURL       string             // url for local testing (if enabled)
+	windowVisible bool               // tracks window visibility for tray menu
 }
 
 // NewApp creates a new application instance
-func NewApp(cfg *config.Config) *App {
+func NewApp(cfg *config.Config, version string) *App {
 	return &App{
-		cfg:      cfg,
-		clockify: clockify.NewClient(cfg.ClockifyAPIKey, cfg.ClockifyWorkspace),
-		jira:     jira.NewClient(cfg.JiraBaseURL, cfg.JiraEmail, cfg.JiraAPIToken),
-		detector: detector.NewDetector(15 * time.Second),
-		entries:  make([]models.TimeEntry, 0),
+		cfg:           cfg,
+		version:       version,
+		clockify:      clockify.NewClient(cfg.ClockifyAPIKey, cfg.ClockifyWorkspace),
+		jira:          jira.NewClient(cfg.JiraBaseURL, cfg.JiraEmail, cfg.JiraAPIToken),
+		detector:      detector.NewDetector(15 * time.Second),
+		entries:       make([]models.TimeEntry, 0),
+		windowVisible: true,
 	}
 }
 
@@ -47,6 +52,32 @@ func (a *App) SetMockMode(mockURL string) {
 	a.mockURL = mockURL
 	a.clockify.SetBaseURL(mockURL)
 	a.jira.SetBaseURL(mockURL)
+}
+
+// InitTray sets up the macOS system tray icon and context menu.
+// The tray callbacks toggle window visibility and quit the app.
+func (a *App) InitTray(version string, icon []byte) {
+	tray.Init(version, icon, func() {
+		// Toggle window visibility
+		a.mu.Lock()
+		a.windowVisible = !a.windowVisible
+		visible := a.windowVisible
+		a.mu.Unlock()
+
+		if a.ctx != nil {
+			if visible {
+				wailsRuntime.WindowShow(a.ctx)
+			} else {
+				wailsRuntime.WindowHide(a.ctx)
+			}
+		}
+		tray.SetWindowVisible(visible)
+	}, func() {
+		// Quit the app
+		if a.ctx != nil {
+			wailsRuntime.Quit(a.ctx)
+		}
+	})
 }
 
 // --- Configuration Methods ---
@@ -91,6 +122,11 @@ func (a *App) GetConfigPath() string {
 		return "(unknown)"
 	}
 	return p
+}
+
+// GetVersion returns the application version string
+func (a *App) GetVersion() string {
+	return a.version
 }
 
 // FetchWorkspaces returns Clockify workspaces for the given API key.
