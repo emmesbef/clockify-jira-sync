@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.1](https://github.com/emmesbef/clockify-jira-sync/compare/v1.6.0...v1.6.1) (2026-03-07)
+
+
+### Bug Fixes
+
+* migrate all Jira endpoints to v3 API and fix tray About ([0bd5ea3](https://github.com/emmesbef/clockify-jira-sync/commit/0bd5ea38fe7bd491919fb99df186a44b788fe125))
+* set productVersion in wails.json during CI build ([c5309b4](https://github.com/emmesbef/clockify-jira-sync/commit/c5309b41a5372748a0ce8b60a7f7230781962027))
+
 ## [1.6.0](https://github.com/emmesbef/clockify-jira-sync/compare/v1.5.0...v1.6.0) (2026-03-07)
 
 
