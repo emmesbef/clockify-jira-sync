@@ -112,7 +112,7 @@ function initTicketSearch() {
             return;
         }
 
-        // For 1-char queries, filter cached assigned tickets locally
+        // For 1-char queries, show local matches immediately then also query Jira
         if (query.length === 1) {
             const filtered = assignedTickets.filter(t =>
                 t.key.toUpperCase().startsWith(query.toUpperCase()) ||
@@ -120,13 +120,10 @@ function initTicketSearch() {
             );
             if (filtered.length > 0) {
                 renderDropdown(filtered, dropdown);
-            } else {
-                dropdown.classList.add('hidden');
             }
-            return;
         }
 
-        // For 2+ chars, query Jira (debounced)
+        // Query Jira for all queries (debounced)
         searchTimeout = setTimeout(async () => {
             try {
                 const tickets = await App.SearchTickets(query);

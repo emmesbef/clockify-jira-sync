@@ -156,8 +156,8 @@ func (c *Client) findProjectsByPrefix(prefix string) []string {
 // keyWithDashPattern matches "P-", "P-1", "PROJ-123" (case-insensitive)
 var keyWithDashPattern = regexp.MustCompile(`(?i)^([A-Z][A-Z0-9]*)-(\d*)$`)
 
-// projectKeyPattern matches "P", "PROJ", "PRO" (uppercase only — likely a project key)
-var projectKeyPattern = regexp.MustCompile(`^[A-Z][A-Z0-9]*$`)
+// projectKeyPattern matches "P", "PROJ", "pro", "scr" (letters only — likely a project key)
+var projectKeyPattern = regexp.MustCompile(`(?i)^[A-Z][A-Z0-9]*$`)
 
 // SearchIssues searches for Jira issues matching a query.
 // It detects key-like patterns (e.g., SCR, PROJ-1) and finds matching projects
