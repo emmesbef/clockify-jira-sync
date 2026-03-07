@@ -48,15 +48,21 @@ void updateShowHideTitle(void) {
 }
 
 void initTray(const char *version, const void *iconData, int iconLen) {
+    // Copy data before dispatch_async — the Go caller frees the C string and
+    // the icon pointer may become invalid after Init() returns.
+    NSString *versionCopy = version ? [NSString stringWithUTF8String:version] : @"dev";
+    NSData *iconDataCopy = (iconData && iconLen > 0)
+        ? [NSData dataWithBytes:iconData length:iconLen]
+        : nil;
+
     dispatch_async(dispatch_get_main_queue(), ^{
-        appVersion = version ? [NSString stringWithUTF8String:version] : @"dev";
+        appVersion = versionCopy;
         trayDelegate = [[TrayDelegate alloc] init];
 
         statusItem = [[NSStatusBar systemStatusBar] statusItemWithLength:NSSquareStatusItemLength];
 
-        if (iconData && iconLen > 0) {
-            NSData *data = [NSData dataWithBytes:iconData length:iconLen];
-            NSImage *icon = [[NSImage alloc] initWithData:data];
+        if (iconDataCopy) {
+            NSImage *icon = [[NSImage alloc] initWithData:iconDataCopy];
             [icon setSize:NSMakeSize(18, 18)];
             icon.template = YES;
             statusItem.button.image = icon;
