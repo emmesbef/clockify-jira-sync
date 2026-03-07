@@ -132,7 +132,7 @@ func (m *appFlowMock) handle(w http.ResponseWriter, r *http.Request) {
 		m.writeJSON(w, http.StatusOK, map[string]string{
 			"accountId": "mock-account-id",
 		})
-	case r.URL.Path == "/rest/api/2/search":
+	case r.URL.Path == "/rest/api/3/search/jql":
 		m.handleJiraSearch(w, r)
 	case strings.HasPrefix(r.URL.Path, "/rest/api/2/issue/"):
 		m.handleJiraIssue(w, r)
@@ -144,8 +144,12 @@ func (m *appFlowMock) handle(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *appFlowMock) handleJiraSearch(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		JQL string `json:"jql"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
 	m.mu.Lock()
-	m.searchJQLs = append(m.searchJQLs, r.URL.Query().Get("jql"))
+	m.searchJQLs = append(m.searchJQLs, body.JQL)
 	m.mu.Unlock()
 
 	m.writeJSON(w, http.StatusOK, map[string]any{

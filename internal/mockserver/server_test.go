@@ -131,7 +131,7 @@ func TestStartSearchAndFallbackResponses(t *testing.T) {
 	server := Start()
 	defer server.Close()
 
-	resp, err := http.Get(server.URL + "/rest/api/2/search")
+	resp, err := http.Post(server.URL+"/rest/api/3/search/jql", "application/json", strings.NewReader(`{"jql":"order by created DESC","maxResults":20}`))
 	if err != nil {
 		t.Fatalf("search request failed: %v", err)
 	}

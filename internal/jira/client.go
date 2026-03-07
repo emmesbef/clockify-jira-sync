@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"time"
 
 	"clockify-jira-sync/internal/models"
@@ -81,14 +80,23 @@ func (c *Client) SearchIssues(query string) ([]models.JiraTicket, error) {
 }
 
 func (c *Client) searchWithJQL(jql string, maxResults int) ([]models.JiraTicket, error) {
-	apiURL := fmt.Sprintf("%s/rest/api/2/search?jql=%s&maxResults=%d&fields=summary,status,assignee,issuetype",
-		c.baseURL, url.QueryEscape(jql), maxResults)
+	apiURL := fmt.Sprintf("%s/rest/api/3/search/jql", c.baseURL)
 
-	req, err := http.NewRequest("GET", apiURL, nil)
+	body, err := json.Marshal(map[string]interface{}{
+		"jql":        jql,
+		"maxResults": maxResults,
+		"fields":     []string{"summary", "status", "assignee", "issuetype"},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", apiURL, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
 	c.setHeaders(req)
+	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {

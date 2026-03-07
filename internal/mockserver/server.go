@@ -14,7 +14,7 @@ func Start() *httptest.Server {
 	mux := http.NewServeMux()
 
 	// ---- Jira Mock Endpoints ---- //
-	mux.HandleFunc("/rest/api/2/search", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/rest/api/3/search/jql", func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]interface{}{
 			"total": 3,
 			"issues": []interface{}{

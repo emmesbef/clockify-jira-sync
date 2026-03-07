@@ -12,13 +12,19 @@ import (
 
 func TestSearchIssues(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasPrefix(r.URL.Path, "/rest/api/2/search") {
+		if r.URL.Path != "/rest/api/3/search/jql" {
 			t.Errorf("Unexpected path: %s", r.URL.Path)
 		}
+		if r.Method != http.MethodPost {
+			t.Errorf("Expected POST, got %s", r.Method)
+		}
 
-		jql := r.URL.Query().Get("jql")
+		body, _ := io.ReadAll(r.Body)
+		var req map[string]interface{}
+		json.Unmarshal(body, &req)
+		jql, _ := req["jql"].(string)
 		if !strings.Contains(jql, "test-query") {
-			t.Errorf("Expected jql to contain 'test-query'")
+			t.Errorf("Expected jql to contain 'test-query', got %q", jql)
 		}
 
 		resp := searchResponse{
