@@ -129,7 +129,7 @@ function initTicketSearch() {
 
     // Close dropdowns on outside click
     document.addEventListener('click', (e) => {
-        if (!e.target.closest('.search-container') && !e.target.closest('#assigned-tickets')) {
+        if (!e.target.closest('.search-container') && !e.target.closest('#assigned-tickets') && !e.target.closest('#toggle-assigned-btn')) {
             dropdown.classList.add('hidden');
             document.getElementById('assigned-tickets').classList.add('hidden');
         }

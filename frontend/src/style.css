@@ -507,6 +507,14 @@ body {
     color: var(--text-secondary);
 }
 
+/* Inline dropdown for assigned tickets (not absolutely positioned) */
+.inline-dropdown {
+    position: relative;
+    top: auto;
+    margin-top: 0;
+    margin-bottom: var(--space-md);
+}
+
 /* ===== Selected Ticket ===== */
 /* ===== Selected Ticket ===== */
 .selected-ticket {
