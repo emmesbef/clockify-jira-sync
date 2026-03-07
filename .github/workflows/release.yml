@@ -181,19 +181,16 @@ jobs:
           name: release-macos-universal
           path: assets
 
-      - name: Compute SHA256 and update cask
+      - name: Compute SHA256 and update cask via API
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
           TAG="${{ inputs.tag_name }}"
           VERSION="${TAG#v}"
           SHA=$(sha256sum assets/*macos-universal.zip | awk '{print $1}')
           echo "Version: $VERSION  SHA256: $SHA"
 
-          git clone "https://x-access-token:${GH_TOKEN}@github.com/emmesbef/homebrew-tap.git" tap
-          cd tap
-
-          cat > Casks/clockify-jira-sync.rb << 'CASK_EOF'
+          CASK_CONTENT=$(cat <<'CASK_EOF'
           cask "clockify-jira-sync" do
             version "VERSION_PLACEHOLDER"
             sha256 "SHA_PLACEHOLDER"
@@ -221,15 +218,27 @@ jobs:
             ]
           end
           CASK_EOF
+          )
 
-          sed -i "s/VERSION_PLACEHOLDER/${VERSION}/" Casks/clockify-jira-sync.rb
-          sed -i "s/SHA_PLACEHOLDER/${SHA}/" Casks/clockify-jira-sync.rb
-          # Remove leading whitespace from heredoc
-          sed -i 's/^          //' Casks/clockify-jira-sync.rb
+          # Substitute placeholders and strip heredoc indent
+          CASK_CONTENT=$(echo "$CASK_CONTENT" \
+            | sed "s/VERSION_PLACEHOLDER/${VERSION}/" \
+            | sed "s/SHA_PLACEHOLDER/${SHA}/" \
+            | sed 's/^          //')
 
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Casks/clockify-jira-sync.rb
-          git diff --cached --quiet && echo "No changes to cask" && exit 0
-          git commit -m "chore: bump clockify-jira-sync to ${VERSION}"
-          git push
+          # Get current file SHA (needed for updates)
+          FILE_SHA=$(gh api repos/emmesbef/homebrew-tap/contents/Casks/clockify-jira-sync.rb \
+            --jq '.sha' 2>/dev/null || echo "")
+
+          ENCODED=$(echo "$CASK_CONTENT" | base64 -w0)
+
+          if [ -n "$FILE_SHA" ]; then
+            gh api --method PUT repos/emmesbef/homebrew-tap/contents/Casks/clockify-jira-sync.rb \
+              -f message="chore: bump clockify-jira-sync to ${VERSION}" \
+              -f content="$ENCODED" \
+              -f sha="$FILE_SHA"
+          else
+            gh api --method PUT repos/emmesbef/homebrew-tap/contents/Casks/clockify-jira-sync.rb \
+              -f message="chore: bump clockify-jira-sync to ${VERSION}" \
+              -f content="$ENCODED"
+          fi
