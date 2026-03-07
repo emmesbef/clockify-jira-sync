@@ -420,13 +420,17 @@ function setDefaultDates() {
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     document.getElementById('history-start').value = weekAgo;
     document.getElementById('history-end').value = today;
+
+    // Auto-fetch history for the default range
+    fetchHistoryFromClockify();
 }
 
 // ===== History =====
 function initHistory() {
     document.getElementById('history-fetch-btn').addEventListener('click', fetchHistoryFromClockify);
-    // Auto-fetch last 7 days on startup
-    fetchHistoryFromClockify();
+    // Auto-fetch when date range changes
+    document.getElementById('history-start').addEventListener('change', fetchHistoryFromClockify);
+    document.getElementById('history-end').addEventListener('change', fetchHistoryFromClockify);
 }
 
 async function refreshHistory() {
