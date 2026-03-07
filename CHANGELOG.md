@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.2](https://github.com/emmesbef/clockify-jira-sync/compare/v1.8.1...v1.8.2) (2026-03-07)
+
+
+### Bug Fixes
+
+* prefix-match across multiple projects, limit dropdown to 5 ([07b16d5](https://github.com/emmesbef/clockify-jira-sync/commit/07b16d565b81981d1c975063f0c9577a7dcc52d0))
+
 ## [1.8.1](https://github.com/emmesbef/clockify-jira-sync/compare/v1.8.0...v1.8.1) (2026-03-07)
 
 
