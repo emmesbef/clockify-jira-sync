@@ -104,13 +104,17 @@ function initTicketSearch() {
     const dropdown = document.getElementById('search-results');
 
     input.addEventListener('input', (e) => {
-        const query = e.target.value.trim();
         clearTimeout(searchTimeout);
 
         // If a ticket is selected and user starts typing, clear selection
+        // and keep only the newly typed character as the query
         if (selectedTicket) {
-            clearTicket(true); // keep text in input
+            const typed = e.inputType === 'deleteContentBackward' ? '' : (e.data || '');
+            clearTicket(); // clear everything including input
+            input.value = typed;
         }
+
+        const query = input.value.trim();
 
         if (query.length < 2) {
             // Show assigned tickets if input is short

@@ -6,10 +6,36 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"clockify-jira-sync/internal/models"
 )
+
+// escapeJQLText escapes Lucene special characters for the JQL ~ operator.
+// Without escaping, characters like - are interpreted as boolean operators.
+func escapeJQLText(s string) string {
+	replacer := strings.NewReplacer(
+		`\`, `\\\\`,
+		`+`, `\\+`,
+		`-`, `\\-`,
+		`&`, `\\&`,
+		`|`, `\\|`,
+		`!`, `\\!`,
+		`(`, `\\(`,
+		`)`, `\\)`,
+		`{`, `\\{`,
+		`}`, `\\}`,
+		`[`, `\\[`,
+		`]`, `\\]`,
+		`^`, `\\^`,
+		`~`, `\\~`,
+		`*`, `\\*`,
+		`?`, `\\?`,
+		`/`, `\\/`,
+	)
+	return replacer.Replace(s)
+}
 
 // Client wraps the Jira REST API v3
 type Client struct {
@@ -70,11 +96,14 @@ func (c *Client) GetMyIssues() ([]models.JiraTicket, error) {
 	return c.searchWithJQL(jql, 50)
 }
 
-// SearchIssues searches for Jira issues matching a query
+// SearchIssues searches for Jira issues matching a query.
+// It searches both summary text and issue key so users can type
+// either a ticket key like "PROJ-123" or keywords like "login page".
 func (c *Client) SearchIssues(query string) ([]models.JiraTicket, error) {
+	escaped := escapeJQLText(query)
 	jql := fmt.Sprintf(
-		`(summary ~ "%s" OR key = "%s") AND status != Done ORDER BY updated DESC`,
-		query, query,
+		`(summary ~ "%s" OR description ~ "%s" OR key = "%s") AND status != Done ORDER BY updated DESC`,
+		escaped, escaped, query,
 	)
 	return c.searchWithJQL(jql, 20)
 }
