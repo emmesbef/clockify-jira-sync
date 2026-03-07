@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.3](https://github.com/emmesbef/clockify-jira-sync/compare/v1.4.2...v1.4.3) (2026-03-07)
+
+
+### Bug Fixes
+
+* pass secrets to reusable release workflow ([b66085a](https://github.com/emmesbef/clockify-jira-sync/commit/b66085ac3378ef6eff6168ed25e0d8910cb3d295))
+* use dedicated HOMEBREW_TAP_TOKEN for homebrew-tap updates ([511b802](https://github.com/emmesbef/clockify-jira-sync/commit/511b80249982d856279bfc8c4e1c4addd8bbe362))
+
 ## [1.4.2](https://github.com/emmesbef/clockify-jira-sync/compare/v1.4.1...v1.4.2) (2026-03-07)
 
 
