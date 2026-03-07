@@ -502,18 +502,42 @@ function renderHistory(entries) {
         });
     });
 
-    // Delete buttons
+    // Delete buttons — use inline confirmation instead of confirm() which doesn't work in Wails WebView
     container.querySelectorAll('.delete-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
-            const id = btn.dataset.id;
-            if (confirm('Delete this time entry?')) {
-                try {
-                    await App.DeleteEntry(id);
-                    showToast('Entry deleted', 'success');
-                    refreshHistory();
-                } catch (err) {
-                    showToast('Failed to delete: ' + err, 'error');
-                }
+            if (btn.dataset.confirming === 'true') return;
+
+            if (!btn.dataset.confirmed) {
+                btn.dataset.confirming = 'true';
+                const original = btn.innerHTML;
+                btn.innerHTML = '❌';
+                btn.title = 'Click again to confirm';
+                btn.classList.add('confirm-delete');
+
+                const timeout = setTimeout(() => {
+                    btn.innerHTML = original;
+                    btn.title = 'Delete';
+                    btn.classList.remove('confirm-delete');
+                    delete btn.dataset.confirmed;
+                    delete btn.dataset.confirming;
+                }, 3000);
+
+                btn.dataset.confirmed = 'true';
+                delete btn.dataset.confirming;
+
+                btn.addEventListener('click', async function confirmHandler() {
+                    btn.removeEventListener('click', confirmHandler);
+                    clearTimeout(timeout);
+                    const id = btn.dataset.id;
+                    try {
+                        await App.DeleteEntry(id);
+                        showToast('Entry deleted', 'success');
+                        refreshHistory();
+                    } catch (err) {
+                        showToast('Failed to delete: ' + err, 'error');
+                    }
+                }, { once: true });
+                return;
             }
         });
     });

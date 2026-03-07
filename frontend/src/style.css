@@ -809,6 +809,15 @@ body {
     padding: 4px;
 }
 
+.entry-actions .icon-btn.confirm-delete {
+    animation: pulse 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+    from { opacity: 1; }
+    to { opacity: 0.5; }
+}
+
 /* ===== Branch Detection Banner ===== */
 .banner {
     background: linear-gradient(135deg, var(--accent-glow), rgba(99, 102, 241, 0.1));
