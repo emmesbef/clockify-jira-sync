@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.9.0](https://github.com/emmesbef/clockify-jira-sync/compare/v1.8.7...v1.9.0) (2026-03-07)
+
+
+### Features
+
+* auto-adjust Jira remaining estimate on worklog changes ([bf363fe](https://github.com/emmesbef/clockify-jira-sync/commit/bf363fe074fcd4fd05b3fd5a71663d1db98f0f04))
+
+
+### Bug Fixes
+
+* delete entry also removes Jira worklog ([b73da55](https://github.com/emmesbef/clockify-jira-sync/commit/b73da550e456b8574bf7f405fba4cee0b293838b))
+* replace confirm() with inline delete confirmation ([991fea3](https://github.com/emmesbef/clockify-jira-sync/commit/991fea31981d03c01c3f7b221047a514fc7cfded))
+* update entry also syncs Jira worklog from history ([ce6e915](https://github.com/emmesbef/clockify-jira-sync/commit/ce6e91514f412d55ddbf2e552b16b25010b64b37))
+
 ## [1.8.7](https://github.com/emmesbef/clockify-jira-sync/compare/v1.8.6...v1.8.7) (2026-03-07)
 
 
