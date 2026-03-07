@@ -14,6 +14,15 @@ func Start() *httptest.Server {
 	mux := http.NewServeMux()
 
 	// ---- Jira Mock Endpoints ---- //
+	mux.HandleFunc("/rest/api/3/project", func(w http.ResponseWriter, r *http.Request) {
+		resp := []map[string]string{
+			{"key": "DEV", "name": "Development"},
+			{"key": "DSGN", "name": "Design"},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	})
+
 	mux.HandleFunc("/rest/api/3/search/jql", func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]interface{}{
 			"total": 3,

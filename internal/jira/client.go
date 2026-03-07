@@ -40,10 +40,17 @@ func escapeJQLText(s string) string {
 
 // Client wraps the Jira REST API v3
 type Client struct {
-	baseURL    string
-	email      string
-	apiToken   string
-	httpClient *http.Client
+	baseURL          string
+	email            string
+	apiToken         string
+	httpClient       *http.Client
+	projectCache     []jiraProjectInfo
+	projectCacheTime time.Time
+}
+
+type jiraProjectInfo struct {
+	Key  string `json:"key"`
+	Name string `json:"name"`
 }
 
 // NewClient creates a new Jira API client
@@ -97,6 +104,55 @@ func (c *Client) GetMyIssues() ([]models.JiraTicket, error) {
 	return c.searchWithJQL(jql, 50)
 }
 
+// getProjects fetches and caches all Jira projects accessible to the user
+func (c *Client) getProjects() ([]jiraProjectInfo, error) {
+	if time.Since(c.projectCacheTime) < 5*time.Minute && c.projectCache != nil {
+		return c.projectCache, nil
+	}
+
+	apiURL := fmt.Sprintf("%s/rest/api/3/project", c.baseURL)
+	req, err := http.NewRequest(http.MethodGet, apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	c.setHeaders(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("projects API returned %d", resp.StatusCode)
+	}
+
+	var projects []jiraProjectInfo
+	if err := json.NewDecoder(resp.Body).Decode(&projects); err != nil {
+		return nil, err
+	}
+
+	c.projectCache = projects
+	c.projectCacheTime = time.Now()
+	return projects, nil
+}
+
+// findProjectsByPrefix returns project keys that start with the given prefix
+func (c *Client) findProjectsByPrefix(prefix string) []string {
+	projects, err := c.getProjects()
+	if err != nil {
+		return nil
+	}
+	upper := strings.ToUpper(prefix)
+	var keys []string
+	for _, p := range projects {
+		if strings.HasPrefix(strings.ToUpper(p.Key), upper) {
+			keys = append(keys, p.Key)
+		}
+	}
+	return keys
+}
+
 // keyWithDashPattern matches "P-", "P-1", "PROJ-123" (case-insensitive)
 var keyWithDashPattern = regexp.MustCompile(`(?i)^([A-Z][A-Z0-9]*)-(\d*)$`)
 
@@ -104,57 +160,67 @@ var keyWithDashPattern = regexp.MustCompile(`(?i)^([A-Z][A-Z0-9]*)-(\d*)$`)
 var projectKeyPattern = regexp.MustCompile(`^[A-Z][A-Z0-9]*$`)
 
 // SearchIssues searches for Jira issues matching a query.
-// It detects key-like patterns (e.g., PROJ, PROJ-1) and uses project-based
-// JQL with prefix filtering. For plain text queries it searches summary and description.
+// It detects key-like patterns (e.g., SCR, PROJ-1) and finds matching projects
+// by prefix, then searches across all of them. For plain text queries it
+// searches summary and description.
 func (c *Client) SearchIssues(query string) ([]models.JiraTicket, error) {
 	trimmed := strings.TrimSpace(query)
 
-	// Key with dash: "PROJ-" or "PROJ-123"
+	// Key with dash: "SCR-1", "PROJ-123", "P-"
 	if matches := keyWithDashPattern.FindStringSubmatch(trimmed); matches != nil {
-		project := strings.ToUpper(matches[1])
+		projectPrefix := strings.ToUpper(matches[1])
 		number := matches[2]
 
-		var jql string
-		if number != "" {
-			jql = fmt.Sprintf(
-				`project = "%s" AND key >= "%s-%s" AND status != Done ORDER BY key ASC`,
-				project, project, number,
-			)
-		} else {
-			jql = fmt.Sprintf(
-				`project = "%s" AND status != Done ORDER BY updated DESC`,
-				project,
-			)
-		}
-
-		results, err := c.searchWithJQL(jql, 100)
-		if err == nil {
+		matchingProjects := c.findProjectsByPrefix(projectPrefix)
+		if len(matchingProjects) > 0 {
+			projectList := `"` + strings.Join(matchingProjects, `", "`) + `"`
+			var jql string
 			if number != "" {
-				prefix := project + "-" + number
-				var filtered []models.JiraTicket
-				for _, t := range results {
-					if strings.HasPrefix(strings.ToUpper(t.Key), prefix) {
-						filtered = append(filtered, t)
-					}
-				}
-				return filtered, nil
+				jql = fmt.Sprintf(
+					`project in (%s) AND status != Done ORDER BY key ASC`,
+					projectList,
+				)
+			} else {
+				jql = fmt.Sprintf(
+					`project in (%s) AND status != Done ORDER BY updated DESC`,
+					projectList,
+				)
 			}
-			return results, nil
+
+			results, err := c.searchWithJQL(jql, 50)
+			if err == nil {
+				if number != "" {
+					// Filter by issue number prefix across all matching projects
+					var filtered []models.JiraTicket
+					for _, t := range results {
+						parts := strings.SplitN(t.Key, "-", 2)
+						if len(parts) == 2 && strings.HasPrefix(parts[1], number) {
+							filtered = append(filtered, t)
+						}
+					}
+					return filtered, nil
+				}
+				return results, nil
+			}
 		}
-		// Project might not exist — fall through to text search
+		// No matching projects — fall through to text search
 	}
 
-	// All-uppercase letters: try as a project key (e.g., "PROJ", "PRO")
+	// All-uppercase letters: try as a project key prefix (e.g., "SCR", "PROJ")
 	if projectKeyPattern.MatchString(trimmed) {
-		jql := fmt.Sprintf(
-			`project = "%s" AND status != Done ORDER BY updated DESC`,
-			trimmed,
-		)
-		results, err := c.searchWithJQL(jql, 50)
-		if err == nil && len(results) > 0 {
-			return results, nil
+		matchingProjects := c.findProjectsByPrefix(trimmed)
+		if len(matchingProjects) > 0 {
+			projectList := `"` + strings.Join(matchingProjects, `", "`) + `"`
+			jql := fmt.Sprintf(
+				`project in (%s) AND status != Done ORDER BY updated DESC`,
+				projectList,
+			)
+			results, err := c.searchWithJQL(jql, 50)
+			if err == nil && len(results) > 0 {
+				return results, nil
+			}
 		}
-		// Not a valid project — fall through to text search
+		// No matching projects — fall through to text search
 	}
 
 	// Text search on summary and description

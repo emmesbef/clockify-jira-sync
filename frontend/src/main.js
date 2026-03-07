@@ -170,7 +170,10 @@ function renderDropdown(tickets, dropdown) {
         return;
     }
 
-    dropdown.innerHTML = tickets.map(t => `
+    // Limit to 5 results in the dropdown
+    const shown = tickets.slice(0, 5);
+
+    dropdown.innerHTML = shown.map(t => `
         <div class="dropdown-item" data-key="${t.key}" data-summary="${escapeHtml(t.summary)}" data-status="${t.status}" data-type="${t.issueType}">
             <span class="ticket-key">${t.key}</span>
             <span class="ticket-summary">${escapeHtml(t.summary)}</span>

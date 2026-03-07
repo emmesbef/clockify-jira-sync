@@ -149,6 +149,10 @@ func (m *appFlowMock) handle(w http.ResponseWriter, r *http.Request) {
 		m.writeJSON(w, http.StatusOK, map[string]string{
 			"accountId": "mock-account-id",
 		})
+	case r.URL.Path == "/rest/api/3/project":
+		m.writeJSON(w, http.StatusOK, []map[string]string{
+			{"key": "PROJ", "name": "Project"},
+		})
 	case r.URL.Path == "/rest/api/3/search/jql":
 		m.handleJiraSearch(w, r)
 	case strings.HasPrefix(r.URL.Path, "/rest/api/3/issue/"):
@@ -875,7 +879,7 @@ func TestGetMyTicketsAndSearchTickets(t *testing.T) {
 	if len(searches) != 2 {
 		t.Fatalf("expected exactly two Jira search calls, got %d", len(searches))
 	}
-	if !strings.Contains(searches[1], `project = "PROJ"`) {
+	if !strings.Contains(searches[1], `project in ("PROJ")`) {
 		t.Fatalf("expected Jira search JQL to include project filter, got %q", searches[1])
 	}
 }
