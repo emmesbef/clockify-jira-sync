@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/emmesbef/clockify-jira-sync/compare/v1.6.2...v1.7.0) (2026-03-07)
+
+
+### Features
+
+* rework ticket search, fix Jira worklogs, add Clockify projects ([8a3e0f9](https://github.com/emmesbef/clockify-jira-sync/commit/8a3e0f9309719c9936df42a661727a1c81b7999c))
+
 ## [1.6.2](https://github.com/emmesbef/clockify-jira-sync/compare/v1.6.1...v1.6.2) (2026-03-07)
 
 
