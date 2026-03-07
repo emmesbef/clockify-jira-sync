@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1](https://github.com/emmesbef/clockify-jira-sync/compare/v1.8.0...v1.8.1) (2026-03-07)
+
+
+### Bug Fixes
+
+* remove badge, search from 1 char, fully editable description ([161806e](https://github.com/emmesbef/clockify-jira-sync/commit/161806eef34848ae7c0390446412589a161bf0f9))
+
 ## [1.8.0](https://github.com/emmesbef/clockify-jira-sync/compare/v1.7.1...v1.8.0) (2026-03-07)
 
 
