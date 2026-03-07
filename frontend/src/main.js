@@ -616,15 +616,15 @@ async function fetchAndPopulateWorkspaces(apiKey, selectedId) {
         }
         for (const w of workspaces) {
             const opt = document.createElement('option');
-            opt.value = w.ID;
-            opt.textContent = w.Name;
+            opt.value = w.id;
+            opt.textContent = w.name;
             ws.appendChild(opt);
         }
         // Auto-select: saved value, or the only workspace
         if (selectedId && [...ws.options].some(o => o.value === selectedId)) {
             ws.value = selectedId;
         } else if (workspaces.length === 1) {
-            ws.value = workspaces[0].ID;
+            ws.value = workspaces[0].id;
         }
     } catch (err) {
         ws.innerHTML = '<option value="">Failed to load workspaces</option>';
@@ -673,9 +673,10 @@ function initSettings() {
     document.getElementById('settings-api-form').addEventListener('submit', async (e) => {
         e.preventDefault();
 
+        const wsVal = document.getElementById('setting-clockify-ws').value.trim();
         const config = {
             ClockifyAPIKey: document.getElementById('setting-clockify-key').value.trim(),
-            ClockifyWorkspace: document.getElementById('setting-clockify-ws').value.trim(),
+            ClockifyWorkspace: (wsVal && wsVal !== 'undefined') ? wsVal : '',
             JiraBaseURL: document.getElementById('setting-jira-url').value.trim(),
             JiraEmail: document.getElementById('setting-jira-email').value.trim(),
             JiraAPIToken: document.getElementById('setting-jira-token').value.trim(),
