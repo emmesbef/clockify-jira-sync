@@ -108,8 +108,25 @@ function initTicketSearch() {
         const query = input.value.trim();
 
         if (query.length === 0) {
+            selectedTicket = null;
+            document.getElementById('clear-ticket-btn').classList.add('hidden');
+            document.getElementById('timer-start-btn').disabled = true;
+            document.getElementById('manual-submit-btn').disabled = true;
             renderAssignedDropdown(dropdown);
             return;
+        }
+
+        // If a ticket is selected and input still starts with its key,
+        // the user is just editing the description — don't search
+        if (selectedTicket && query.toUpperCase().startsWith(selectedTicket.key.toUpperCase())) {
+            return;
+        }
+
+        // If the selected ticket's key no longer matches, clear the selection
+        if (selectedTicket) {
+            selectedTicket = null;
+            document.getElementById('timer-start-btn').disabled = true;
+            document.getElementById('manual-submit-btn').disabled = true;
         }
 
         // For 1-char queries, show local matches immediately then also query Jira
