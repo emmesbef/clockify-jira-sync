@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.7](https://github.com/emmesbef/clockify-jira-sync/compare/v1.8.6...v1.8.7) (2026-03-07)
+
+
+### Bug Fixes
+
+* auto-fetch history on startup and date change ([156b930](https://github.com/emmesbef/clockify-jira-sync/commit/156b930af9336c684d2e60f727f3f6c53b00cd92))
+
 ## [1.8.6](https://github.com/emmesbef/clockify-jira-sync/compare/v1.8.5...v1.8.6) (2026-03-07)
 
 
