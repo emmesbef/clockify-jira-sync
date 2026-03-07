@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.5.0](https://github.com/emmesbef/clockify-jira-sync/compare/v1.4.3...v1.5.0) (2026-03-07)
+
+
+### Features
+
+* auto-fetch Clockify workspaces from API ([bb2c5fa](https://github.com/emmesbef/clockify-jira-sync/commit/bb2c5faa1adb87559d48b5ac29dd0310c3f23a8e))
+
+
+### Bug Fixes
+
+* migrate Jira search from deprecated /rest/api/2/search to /rest/api/3/search/jql ([4cd1126](https://github.com/emmesbef/clockify-jira-sync/commit/4cd1126d1ba579ef9a7eb2c47f8e4a67263db790))
+
 ## [1.4.3](https://github.com/emmesbef/clockify-jira-sync/compare/v1.4.2...v1.4.3) (2026-03-07)
 
 
