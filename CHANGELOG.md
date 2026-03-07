@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.2](https://github.com/emmesbef/clockify-jira-sync/compare/v1.3.1...v1.3.2) (2026-03-07)
+
+
+### Bug Fixes
+
+* improve macOS ad-hoc signing with entitlements and hardened runtime ([f8f7b91](https://github.com/emmesbef/clockify-jira-sync/commit/f8f7b9120d4159f11dbf7956cb8bda482f6fb182))
+
 ## [1.3.1](https://github.com/emmesbef/clockify-jira-sync/compare/v1.3.0...v1.3.1) (2026-03-07)
 
 
