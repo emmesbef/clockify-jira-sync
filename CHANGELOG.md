@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.8.4](https://github.com/emmesbef/clockify-jira-sync/compare/v1.8.3...v1.8.4) (2026-03-07)
+
+
+### Bug Fixes
+
+* don't search when editing description after ticket selection ([669df16](https://github.com/emmesbef/clockify-jira-sync/commit/669df1629fdba709ca1981c79dcd1e8efbce5124))
+* only skip search after key+space, not on exact key match ([c422279](https://github.com/emmesbef/clockify-jira-sync/commit/c4222799cabaeb1236df3ee18ce3043b20d22469))
+
 ## [1.8.3](https://github.com/emmesbef/clockify-jira-sync/compare/v1.8.2...v1.8.3) (2026-03-07)
 
 
