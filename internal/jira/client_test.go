@@ -100,7 +100,7 @@ func TestAddWorklog(t *testing.T) {
 
 func TestPing(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/rest/api/2/myself" {
+		if r.URL.Path != "/rest/api/3/myself" {
 			t.Errorf("Unexpected path: %s", r.URL.Path)
 		}
 		if r.Method != "GET" {

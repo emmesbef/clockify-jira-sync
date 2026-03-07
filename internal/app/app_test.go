@@ -128,13 +128,13 @@ func (m *appFlowMock) handle(w http.ResponseWriter, r *http.Request) {
 			"id":    "mock-user-123",
 			"email": "mock@example.com",
 		})
-	case r.URL.Path == "/rest/api/2/myself":
+	case r.URL.Path == "/rest/api/3/myself":
 		m.writeJSON(w, http.StatusOK, map[string]string{
 			"accountId": "mock-account-id",
 		})
 	case r.URL.Path == "/rest/api/3/search/jql":
 		m.handleJiraSearch(w, r)
-	case strings.HasPrefix(r.URL.Path, "/rest/api/2/issue/"):
+	case strings.HasPrefix(r.URL.Path, "/rest/api/3/issue/"):
 		m.handleJiraIssue(w, r)
 	case strings.HasPrefix(r.URL.Path, "/workspaces/"):
 		m.handleClockify(w, r)

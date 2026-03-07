@@ -52,7 +52,7 @@ func Start() *httptest.Server {
 		w.Header().Set("Content-Type", "application/json")
 
 		// Jira get issue
-		if strings.Contains(r.URL.Path, "/rest/api/2/issue/") && !strings.Contains(r.URL.Path, "worklog") {
+		if strings.Contains(r.URL.Path, "/rest/api/3/issue/") && !strings.Contains(r.URL.Path, "worklog") {
 			parts := strings.Split(r.URL.Path, "/")
 			key := parts[len(parts)-1]
 
@@ -69,7 +69,7 @@ func Start() *httptest.Server {
 		}
 
 		// Jira connection check
-		if r.URL.Path == "/rest/api/2/myself" {
+		if r.URL.Path == "/rest/api/3/myself" {
 			json.NewEncoder(w).Encode(map[string]string{
 				"accountId":    "mock-account-id",
 				"emailAddress": "mock@example.com",

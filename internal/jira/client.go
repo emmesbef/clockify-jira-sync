@@ -11,7 +11,7 @@ import (
 	"clockify-jira-sync/internal/models"
 )
 
-// Client wraps the Jira REST API v2
+// Client wraps the Jira REST API v3
 type Client struct {
 	baseURL    string
 	email      string
@@ -132,7 +132,7 @@ func (c *Client) searchWithJQL(jql string, maxResults int) ([]models.JiraTicket,
 
 // GetIssue fetches a single Jira issue by key
 func (c *Client) GetIssue(key string) (*models.JiraTicket, error) {
-	apiURL := fmt.Sprintf("%s/rest/api/2/issue/%s?fields=summary,status,assignee,issuetype",
+	apiURL := fmt.Sprintf("%s/rest/api/3/issue/%s?fields=summary,status,assignee,issuetype",
 		c.baseURL, key)
 
 	req, err := http.NewRequest("GET", apiURL, nil)
@@ -171,7 +171,7 @@ func (c *Client) GetIssue(key string) (*models.JiraTicket, error) {
 
 // Ping checks whether Jira credentials/base URL are valid.
 func (c *Client) Ping() error {
-	apiURL := fmt.Sprintf("%s/rest/api/2/myself", c.baseURL)
+	apiURL := fmt.Sprintf("%s/rest/api/3/myself", c.baseURL)
 
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
@@ -207,7 +207,7 @@ type worklogResponse struct {
 
 // AddWorklog adds a worklog entry to a Jira issue
 func (c *Client) AddWorklog(issueKey string, started time.Time, timeSpentSeconds int64, comment string) (string, error) {
-	apiURL := fmt.Sprintf("%s/rest/api/2/issue/%s/worklog", c.baseURL, issueKey)
+	apiURL := fmt.Sprintf("%s/rest/api/3/issue/%s/worklog", c.baseURL, issueKey)
 
 	body := worklogRequest{
 		Comment:          comment,
@@ -242,7 +242,7 @@ func (c *Client) AddWorklog(issueKey string, started time.Time, timeSpentSeconds
 
 // UpdateWorklog updates an existing worklog
 func (c *Client) UpdateWorklog(issueKey, worklogID string, started time.Time, timeSpentSeconds int64, comment string) error {
-	apiURL := fmt.Sprintf("%s/rest/api/2/issue/%s/worklog/%s", c.baseURL, issueKey, worklogID)
+	apiURL := fmt.Sprintf("%s/rest/api/3/issue/%s/worklog/%s", c.baseURL, issueKey, worklogID)
 
 	body := worklogRequest{
 		Comment:          comment,
@@ -272,7 +272,7 @@ func (c *Client) UpdateWorklog(issueKey, worklogID string, started time.Time, ti
 
 // DeleteWorklog deletes a worklog from a Jira issue
 func (c *Client) DeleteWorklog(issueKey, worklogID string) error {
-	apiURL := fmt.Sprintf("%s/rest/api/2/issue/%s/worklog/%s", c.baseURL, issueKey, worklogID)
+	apiURL := fmt.Sprintf("%s/rest/api/3/issue/%s/worklog/%s", c.baseURL, issueKey, worklogID)
 
 	req, err := http.NewRequest("DELETE", apiURL, nil)
 	if err != nil {

@@ -11,13 +11,26 @@ static BOOL windowVisible = YES;
 
 @interface TrayDelegate : NSObject
 - (void)showWindow:(id)sender;
+- (void)showAbout:(id)sender;
 - (void)quitApp:(id)sender;
 @end
+
+static NSString *appVersion = nil;
 
 @implementation TrayDelegate
 
 - (void)showWindow:(id)sender {
     goTrayShow();
+}
+
+- (void)showAbout:(id)sender {
+    NSAlert *alert = [[NSAlert alloc] init];
+    [alert setMessageText:@"Clockify \u2194 Jira Sync"];
+    [alert setInformativeText:[NSString stringWithFormat:@"Version %@\n\nDesktop app to sync Clockify time entries with Jira worklogs.",
+                               appVersion ?: @"dev"]];
+    [alert setAlertStyle:NSAlertStyleInformational];
+    [alert addButtonWithTitle:@"OK"];
+    [alert runModal];
 }
 
 - (void)quitApp:(id)sender {
@@ -36,6 +49,7 @@ void updateShowHideTitle(void) {
 
 void initTray(const char *version, const void *iconData, int iconLen) {
     dispatch_async(dispatch_get_main_queue(), ^{
+        appVersion = version ? [NSString stringWithUTF8String:version] : @"dev";
         trayDelegate = [[TrayDelegate alloc] init];
 
         statusItem = [[NSStatusBar systemStatusBar] statusItemWithLength:NSSquareStatusItemLength];
@@ -47,10 +61,10 @@ void initTray(const char *version, const void *iconData, int iconLen) {
             icon.template = YES;
             statusItem.button.image = icon;
         } else {
-            statusItem.button.title = @"⏱";
+            statusItem.button.title = @"\u23F1";
         }
 
-        statusItem.button.toolTip = @"Clockify ↔ Jira Sync";
+        statusItem.button.toolTip = @"Clockify \u2194 Jira Sync";
 
         NSMenu *menu = [[NSMenu alloc] init];
 
@@ -62,12 +76,11 @@ void initTray(const char *version, const void *iconData, int iconLen) {
 
         [menu addItem:[NSMenuItem separatorItem]];
 
-        NSString *versionStr = [NSString stringWithFormat:@"About clockify-jira-sync v%s",
-                                version ? version : "dev"];
-        NSMenuItem *aboutItem = [[NSMenuItem alloc] initWithTitle:versionStr
-                                                           action:nil
+        NSString *aboutTitle = [NSString stringWithFormat:@"About (v%@)", appVersion];
+        NSMenuItem *aboutItem = [[NSMenuItem alloc] initWithTitle:aboutTitle
+                                                           action:@selector(showAbout:)
                                                     keyEquivalent:@""];
-        [aboutItem setEnabled:NO];
+        [aboutItem setTarget:trayDelegate];
         [menu addItem:aboutItem];
 
         [menu addItem:[NSMenuItem separatorItem]];
