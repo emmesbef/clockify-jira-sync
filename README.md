@@ -14,12 +14,9 @@ Download the latest release for your platform from [GitHub Releases](https://git
 ### macOS
 
 1. Download the `*-macos-universal.zip` file and unzip it.
-2. On first launch, macOS Gatekeeper will block the app because it is not notarized by Apple. To open it:
+2. On first launch, macOS Gatekeeper will ask for confirmation since the app is not notarized:
    - **Right-click** (or Control-click) the app → **Open** → click **Open** in the dialog.
-   - Alternatively, remove the quarantine flag from the terminal:
-     ```bash
-     xattr -cr /path/to/clockify-jira-sync.app
-     ```
+   - If the "Open" button doesn't appear: go to **System Settings → Privacy & Security** → click **"Open Anyway"**.
 3. After the first successful launch, macOS remembers your choice and the app opens normally.
 
 ### Windows

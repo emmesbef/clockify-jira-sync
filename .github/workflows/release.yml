@@ -61,10 +61,15 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           wails build -clean -platform "${{ matrix.platform }}"
-          # Ad-hoc sign so macOS shows "unidentified developer" instead of the
-          # scarier "malware" Gatekeeper dialog (full notarization requires an
-          # Apple Developer account).
-          codesign --force --deep --sign - build/bin/clockify-jira-sync.app
+          # Ad-hoc sign with entitlements so right-click → Open works on macOS.
+          # Full notarization (which removes the prompt entirely) requires an
+          # Apple Developer account.
+          codesign --force --deep --sign - \
+            --entitlements build/darwin/entitlements.plist \
+            --options runtime \
+            build/bin/clockify-jira-sync.app
+          # Verify the signature is valid
+          codesign --verify --verbose build/bin/clockify-jira-sync.app
 
       - name: Build (Windows)
         if: runner.os == 'Windows'

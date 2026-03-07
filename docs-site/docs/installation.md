@@ -25,33 +25,19 @@ Double-click the downloaded `.zip` file or run:
 unzip clockify-jira-sync-*-macos-universal.zip
 ```
 
-### 2. Open the app (Gatekeeper workaround)
+### 2. Open the app (first launch only)
 
-Because the app is not notarized with an Apple Developer certificate, macOS Gatekeeper will block it on first launch with a message like:
+Because the app is ad-hoc signed (not notarized by Apple), macOS Gatekeeper will ask for confirmation on first launch:
 
-> _"Apple konnte nicht überprüfen, ob „clockify-jira-sync" frei von Schadsoftware ist."_
->
-> _"Apple could not verify whether 'clockify-jira-sync' is free of malware."_
-
-This is expected for open-source apps that are not distributed through the Mac App Store. Choose **one** of these methods to open it:
-
-**Option A — Right-click → Open (recommended)**
-
-1. Right-click (or Control-click) `clockify-jira-sync.app` in Finder.
+1. **Right-click** (or Control-click) `clockify-jira-sync.app` in Finder.
 2. Select **Open** from the context menu.
 3. In the dialog that appears, click **Open**.
 
-macOS remembers your choice — subsequent launches work normally.
+macOS remembers your choice — subsequent launches work normally by double-clicking.
 
-**Option B — Remove the quarantine flag**
-
-Run this command once in Terminal:
-
-```bash
-xattr -cr /path/to/clockify-jira-sync.app
-```
-
-Then open the app normally by double-clicking it.
+:::tip
+If right-click → Open doesn't show an "Open" button on your macOS version, go to **System Settings → Privacy & Security**, scroll down, and click **"Open Anyway"** next to the blocked app. Alternatively, run `xattr -cr /path/to/clockify-jira-sync.app` in Terminal.
+:::
 
 ### 3. Optional: move to Applications
 

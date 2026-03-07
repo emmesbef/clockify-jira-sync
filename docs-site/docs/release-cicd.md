@@ -48,7 +48,7 @@ Versioning is now Release Please-driven. In practice, this means:
 
 ## Code signing
 
-macOS release binaries are **ad-hoc signed** (`codesign --force --deep --sign -`) during the CI build. This produces a locally valid signature that reduces the Gatekeeper warning from "malware" to "unidentified developer," but the app is **not notarized** by Apple.
+macOS release binaries are **ad-hoc signed** with entitlements and hardened runtime (`codesign --force --deep --sign - --entitlements ... --options runtime`). This produces a valid local code signature that allows users to open the app via right-click → Open on first launch. The app is **not notarized** by Apple (which would require a paid Developer account), so Gatekeeper still asks for one-time confirmation.
 
 Users need to right-click → Open (or run `xattr -cr`) on first launch. See the [Installation guide](./installation.md) for details.
 
