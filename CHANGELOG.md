@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.2](https://github.com/emmesbef/clockify-jira-sync/compare/v1.6.1...v1.6.2) (2026-03-07)
+
+
+### Bug Fixes
+
+* ticket toggle and dropdown positioning bugs ([5ef77e9](https://github.com/emmesbef/clockify-jira-sync/commit/5ef77e9ed2581d3541f7bb1ae6ff52a5f198211e))
+* tray version null — copy data before dispatch_async ([875313b](https://github.com/emmesbef/clockify-jira-sync/commit/875313bf6063ecc7e8572c9803f6847d1fb4a83e))
+
 ## [1.6.1](https://github.com/emmesbef/clockify-jira-sync/compare/v1.6.0...v1.6.1) (2026-03-07)
 
 
