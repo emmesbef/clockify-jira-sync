@@ -392,7 +392,7 @@ type worklogResponse struct {
 
 // AddWorklog adds a worklog entry to a Jira issue
 func (c *Client) AddWorklog(issueKey string, started time.Time, timeSpentSeconds int64, comment string) (string, error) {
-	apiURL := fmt.Sprintf("%s/rest/api/3/issue/%s/worklog", c.baseURL, issueKey)
+	apiURL := fmt.Sprintf("%s/rest/api/3/issue/%s/worklog?adjustEstimate=auto", c.baseURL, issueKey)
 
 	body := worklogRequest{
 		Comment:          newADFComment(comment),
@@ -427,7 +427,7 @@ func (c *Client) AddWorklog(issueKey string, started time.Time, timeSpentSeconds
 
 // UpdateWorklog updates an existing worklog
 func (c *Client) UpdateWorklog(issueKey, worklogID string, started time.Time, timeSpentSeconds int64, comment string) error {
-	apiURL := fmt.Sprintf("%s/rest/api/3/issue/%s/worklog/%s", c.baseURL, issueKey, worklogID)
+	apiURL := fmt.Sprintf("%s/rest/api/3/issue/%s/worklog/%s?adjustEstimate=auto", c.baseURL, issueKey, worklogID)
 
 	body := worklogRequest{
 		Comment:          newADFComment(comment),
@@ -457,7 +457,7 @@ func (c *Client) UpdateWorklog(issueKey, worklogID string, started time.Time, ti
 
 // DeleteWorklog deletes a worklog from a Jira issue
 func (c *Client) DeleteWorklog(issueKey, worklogID string) error {
-	apiURL := fmt.Sprintf("%s/rest/api/3/issue/%s/worklog/%s", c.baseURL, issueKey, worklogID)
+	apiURL := fmt.Sprintf("%s/rest/api/3/issue/%s/worklog/%s?adjustEstimate=auto", c.baseURL, issueKey, worklogID)
 
 	req, err := http.NewRequest("DELETE", apiURL, nil)
 	if err != nil {
