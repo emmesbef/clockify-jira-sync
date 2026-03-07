@@ -116,9 +116,9 @@ function initTicketSearch() {
             return;
         }
 
-        // If a ticket is selected and input still starts with its key,
-        // the user is just editing the description — don't search
-        if (selectedTicket && query.toUpperCase().startsWith(selectedTicket.key.toUpperCase())) {
+        // If a ticket is selected and input has the key followed by a space,
+        // the user is editing the description — don't search
+        if (selectedTicket && query.toUpperCase().startsWith(selectedTicket.key.toUpperCase() + ' ')) {
             return;
         }
 
