@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.0](https://github.com/emmesbef/clockify-jira-sync/compare/v1.3.2...v1.4.0) (2026-03-07)
+
+
+### Features
+
+* add Homebrew cask for quarantine-free macOS install ([4ae12b0](https://github.com/emmesbef/clockify-jira-sync/commit/4ae12b00aa03ddf3ab58f31c6e0acd6310cec58d))
+
+
+### Bug Fixes
+
+* save config to user config dir instead of working directory ([257dfa4](https://github.com/emmesbef/clockify-jira-sync/commit/257dfa4c9981ee1109c62673d53f7f24980e9165))
+
 ## [1.3.2](https://github.com/emmesbef/clockify-jira-sync/compare/v1.3.1...v1.3.2) (2026-03-07)
 
 
