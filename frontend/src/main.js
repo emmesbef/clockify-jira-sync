@@ -103,6 +103,9 @@ function initTicketSearch() {
     const input = document.getElementById('ticket-search');
     const dropdown = document.getElementById('search-results');
 
+    // Regex matching a full Jira key followed by a space: "PROJ-123 ..."
+    const fullKeyWithSpace = /^([A-Z][A-Z0-9]+-\d+)\s/i;
+
     input.addEventListener('input', (e) => {
         clearTimeout(searchTimeout);
         const query = input.value.trim();
@@ -119,7 +122,30 @@ function initTicketSearch() {
         // If a ticket is selected and input has the key followed by a space,
         // the user is editing the description — don't search
         if (selectedTicket && query.toUpperCase().startsWith(selectedTicket.key.toUpperCase() + ' ')) {
+            dropdown.classList.add('hidden');
             return;
+        }
+
+        // If no ticket selected but input matches "KEY-123 ...", auto-lock
+        // the ticket so the user can type a description without triggering search
+        if (!selectedTicket) {
+            const keyMatch = input.value.match(fullKeyWithSpace);
+            if (keyMatch) {
+                const typedKey = keyMatch[1].toUpperCase();
+                // Look in cached assigned tickets first
+                const found = assignedTickets.find(t => t.key.toUpperCase() === typedKey);
+                if (found) {
+                    selectedTicket = found;
+                } else {
+                    // Create a minimal ticket object from the typed key
+                    selectedTicket = { key: typedKey, summary: '', status: '', issueType: '' };
+                }
+                document.getElementById('clear-ticket-btn').classList.remove('hidden');
+                document.getElementById('timer-start-btn').disabled = false;
+                document.getElementById('manual-submit-btn').disabled = false;
+                dropdown.classList.add('hidden');
+                return;
+            }
         }
 
         // If the selected ticket's key no longer matches, clear the selection
