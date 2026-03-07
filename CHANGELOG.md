@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.1](https://github.com/emmesbef/clockify-jira-sync/compare/v1.3.0...v1.3.1) (2026-03-07)
+
+
+### Bug Fixes
+
+* add ad-hoc code signing and macOS installation instructions ([3512ca0](https://github.com/emmesbef/clockify-jira-sync/commit/3512ca072aa5364e11a9fe8944ba9ae774292446))
+* use delete-and-recreate pattern for immutable releases ([da3f96a](https://github.com/emmesbef/clockify-jira-sync/commit/da3f96aaa628fbb3ad4aae17505ea833fedbc4bc))
+
 ## [1.3.0](https://github.com/emmesbef/clockify-jira-sync/compare/v1.2.0...v1.3.0) (2026-03-06)
 
 
