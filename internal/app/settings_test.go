@@ -1,7 +1,6 @@
 package app
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -13,16 +12,8 @@ import (
 
 func TestSaveConfigPersistsWorkspace(t *testing.T) {
 	tmpDir := t.TempDir()
-	originalWD, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("failed to get current working directory: %v", err)
-	}
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatalf("failed to switch to temp directory: %v", err)
-	}
-	defer func() {
-		_ = os.Chdir(originalWD)
-	}()
+	config.SetConfigDir(tmpDir)
+	defer config.SetConfigDir("")
 
 	mockSrv := mockserver.Start()
 	defer mockSrv.Close()
@@ -36,7 +27,7 @@ func TestSaveConfigPersistsWorkspace(t *testing.T) {
 	})
 	a.SetMockMode(mockSrv.URL)
 
-	err = a.SaveConfig(config.Config{
+	err := a.SaveConfig(config.Config{
 		ClockifyAPIKey:    "new-key",
 		ClockifyWorkspace: "new-workspace",
 		JiraBaseURL:       "https://new-example.atlassian.net",

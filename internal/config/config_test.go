@@ -2,7 +2,10 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/joho/godotenv"
 )
 
 func TestLoad_Success(t *testing.T) {
@@ -42,5 +45,51 @@ func TestLoad_MissingRequired(t *testing.T) {
 	_, err := Load()
 	if err == nil {
 		t.Fatal("Expected error for missing env var, got nil")
+	}
+}
+
+func TestSave_WritesToConfigDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	SetConfigDir(tmpDir)
+	defer SetConfigDir("")
+
+	cfg := &Config{
+		ClockifyAPIKey:    "save-key",
+		ClockifyWorkspace: "save-ws",
+		JiraBaseURL:       "https://save.atlassian.net",
+		JiraEmail:         "save@example.com",
+		JiraAPIToken:      "save-token",
+	}
+
+	if err := Save(cfg); err != nil {
+		t.Fatalf("Save returned error: %v", err)
+	}
+
+	envPath := filepath.Join(tmpDir, ".env")
+	envMap, err := godotenv.Read(envPath)
+	if err != nil {
+		t.Fatalf("failed to read .env: %v", err)
+	}
+
+	if envMap["CLOCKIFY_API_KEY"] != "save-key" {
+		t.Errorf("expected CLOCKIFY_API_KEY=save-key, got %q", envMap["CLOCKIFY_API_KEY"])
+	}
+	if envMap["CLOCKIFY_WORKSPACE_ID"] != "save-ws" {
+		t.Errorf("expected CLOCKIFY_WORKSPACE_ID=save-ws, got %q", envMap["CLOCKIFY_WORKSPACE_ID"])
+	}
+}
+
+func TestFilePath_ReturnsExpectedPath(t *testing.T) {
+	tmpDir := t.TempDir()
+	SetConfigDir(tmpDir)
+	defer SetConfigDir("")
+
+	p, err := FilePath()
+	if err != nil {
+		t.Fatalf("FilePath returned error: %v", err)
+	}
+	expected := filepath.Join(tmpDir, ".env")
+	if p != expected {
+		t.Errorf("expected %q, got %q", expected, p)
 	}
 }

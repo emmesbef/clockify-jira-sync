@@ -84,6 +84,15 @@ func (a *App) SaveConfig(newCfg config.Config) error {
 	return nil
 }
 
+// GetConfigPath returns the path to the .env config file so the UI can display it.
+func (a *App) GetConfigPath() string {
+	p, err := config.FilePath()
+	if err != nil {
+		return "(unknown)"
+	}
+	return p
+}
+
 // GetIntegrationStatus checks whether Clockify and Jira are currently reachable
 // with the configured credentials.
 func (a *App) GetIntegrationStatus() models.IntegrationStatus {

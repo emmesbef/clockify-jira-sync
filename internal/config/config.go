@@ -3,9 +3,41 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/joho/godotenv"
 )
+
+// configDirOverride allows tests to redirect config storage to a temp directory.
+var configDirOverride string
+
+// SetConfigDir overrides the config directory (for tests only).
+func SetConfigDir(dir string) {
+	configDirOverride = dir
+}
+
+// ConfigDir returns the directory used for storing .env configuration.
+// Uses os.UserConfigDir (~/Library/Application Support on macOS, %AppData% on
+// Windows) with a clockify-jira-sync subdirectory.
+func ConfigDir() (string, error) {
+	if configDirOverride != "" {
+		return configDirOverride, nil
+	}
+	base, err := os.UserConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("cannot determine config directory: %w", err)
+	}
+	return filepath.Join(base, "clockify-jira-sync"), nil
+}
+
+// FilePath returns the full path to the .env config file.
+func FilePath() (string, error) {
+	dir, err := ConfigDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, ".env"), nil
+}
 
 type Config struct {
 	ClockifyAPIKey    string
@@ -17,8 +49,11 @@ type Config struct {
 }
 
 func Load() (*Config, error) {
-	// Load .env file if it exists (ignore error if not found)
-	_ = godotenv.Load()
+	// Try user config dir first, fall back to local .env for development
+	if p, err := FilePath(); err == nil {
+		_ = godotenv.Load(p)
+	}
+	_ = godotenv.Load() // local .env (dev); vars already set above win
 
 	cfg := &Config{
 		ClockifyAPIKey:    os.Getenv("CLOCKIFY_API_KEY"),
@@ -64,9 +99,19 @@ func Load() (*Config, error) {
 	return cfg, nil
 }
 
-// Save writes the configuration to the .env file
+// Save writes the configuration to the .env file in the user config directory.
 func Save(cfg *Config) error {
-	envMap, err := godotenv.Read()
+	p, err := FilePath()
+	if err != nil {
+		return err
+	}
+
+	// Ensure the config directory exists
+	if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
+		return fmt.Errorf("cannot create config directory: %w", err)
+	}
+
+	envMap, err := godotenv.Read(p)
 	if err != nil {
 		envMap = make(map[string]string)
 	}
@@ -77,5 +122,5 @@ func Save(cfg *Config) error {
 	envMap["JIRA_EMAIL"] = cfg.JiraEmail
 	envMap["JIRA_API_TOKEN"] = cfg.JiraAPIToken
 
-	return godotenv.Write(envMap, ".env")
+	return godotenv.Write(envMap, p)
 }
