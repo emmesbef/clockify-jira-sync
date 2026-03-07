@@ -13,6 +13,14 @@ Download the latest release for your platform from [GitHub Releases](https://git
 
 ### macOS
 
+**Recommended — via Homebrew** (no Gatekeeper warning):
+
+```bash
+brew install --cask emmesbef/tap/clockify-jira-sync
+```
+
+**Manual download:**
+
 1. Download the `*-macos-universal.zip` file and unzip it.
 2. On first launch, macOS Gatekeeper will ask for confirmation since the app is not notarized:
    - **Right-click** (or Control-click) the app → **Open** → click **Open** in the dialog.

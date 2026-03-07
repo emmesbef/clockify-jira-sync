@@ -168,3 +168,68 @@ jobs:
             gh release create "$TAG" assets/*.zip assets/*SHA256SUMS.txt \
               --title "$TAG" --generate-notes --latest
           fi
+
+  update-homebrew:
+    name: Update Homebrew Cask
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [publish]
+    steps:
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-macos-universal
+          path: assets
+
+      - name: Compute SHA256 and update cask
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          TAG="${{ inputs.tag_name }}"
+          VERSION="${TAG#v}"
+          SHA=$(sha256sum assets/*macos-universal.zip | awk '{print $1}')
+          echo "Version: $VERSION  SHA256: $SHA"
+
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/emmesbef/homebrew-tap.git" tap
+          cd tap
+
+          cat > Casks/clockify-jira-sync.rb << 'CASK_EOF'
+          cask "clockify-jira-sync" do
+            version "VERSION_PLACEHOLDER"
+            sha256 "SHA_PLACEHOLDER"
+
+            url "https://github.com/emmesbef/clockify-jira-sync/releases/download/v#{version}/clockify-jira-sync-v#{version}-macos-universal.zip"
+            name "Clockify Jira Sync"
+            desc "Desktop app to sync Clockify time entries with Jira worklogs"
+            homepage "https://emmesbef.github.io/clockify-jira-sync/"
+
+            livecheck do
+              url :url
+              strategy :github_latest
+            end
+
+            app "clockify-jira-sync.app"
+
+            postflight do
+              system_command "/usr/bin/xattr",
+                             args: ["-cr", "#{appdir}/clockify-jira-sync.app"]
+            end
+
+            zap trash: [
+              "~/Library/Application Support/clockify-jira-sync",
+              "~/Library/Preferences/com.wails.clockify-jira-sync.plist",
+            ]
+          end
+          CASK_EOF
+
+          sed -i "s/VERSION_PLACEHOLDER/${VERSION}/" Casks/clockify-jira-sync.rb
+          sed -i "s/SHA_PLACEHOLDER/${SHA}/" Casks/clockify-jira-sync.rb
+          # Remove leading whitespace from heredoc
+          sed -i 's/^          //' Casks/clockify-jira-sync.rb
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/clockify-jira-sync.rb
+          git diff --cached --quiet && echo "No changes to cask" && exit 0
+          git commit -m "chore: bump clockify-jira-sync to ${VERSION}"
+          git push

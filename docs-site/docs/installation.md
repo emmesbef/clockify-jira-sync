@@ -17,6 +17,30 @@ Grab the latest release for your platform from the [GitHub Releases page](https:
 
 ## macOS
 
+### Option A: Homebrew (Recommended)
+
+Install via Homebrew to skip macOS Gatekeeper warnings entirely:
+
+```bash
+brew install --cask emmesbef/tap/clockify-jira-sync
+```
+
+The app is installed to `/Applications` and the quarantine flag is removed automatically.
+
+To update:
+
+```bash
+brew upgrade --cask clockify-jira-sync
+```
+
+To uninstall:
+
+```bash
+brew uninstall --cask clockify-jira-sync
+```
+
+### Option B: Manual download
+
 ### 1. Unzip
 
 Double-click the downloaded `.zip` file or run:
