@@ -7,6 +7,26 @@
 
 Desktop app built with Wails (Go backend + Vite frontend) to track time on Jira issues and keep Clockify/Jira worklogs in sync.
 
+## Installation
+
+Download the latest release for your platform from [GitHub Releases](https://github.com/emmesbef/clockify-jira-sync/releases).
+
+### macOS
+
+1. Download the `*-macos-universal.zip` file and unzip it.
+2. On first launch, macOS Gatekeeper will block the app because it is not notarized by Apple. To open it:
+   - **Right-click** (or Control-click) the app → **Open** → click **Open** in the dialog.
+   - Alternatively, remove the quarantine flag from the terminal:
+     ```bash
+     xattr -cr /path/to/clockify-jira-sync.app
+     ```
+3. After the first successful launch, macOS remembers your choice and the app opens normally.
+
+### Windows
+
+1. Download the `*-windows-amd64.zip` file and extract it.
+2. Run `clockify-jira-sync.exe`. Windows SmartScreen may show a warning for unsigned binaries — click **More info → Run anyway**.
+
 ## What it does
 
 - Search Jira issues and quickly pick from "assigned to me" tickets.

@@ -46,6 +46,14 @@ Versioning is now Release Please-driven. In practice, this means:
 - Merging the release PR creates the version tag and GitHub Release before macOS/Windows artifacts are attached.
 - `release.yml` remains available as a manual backfill/rebuild path for an existing `v*` tag.
 
+## Code signing
+
+macOS release binaries are **ad-hoc signed** (`codesign --force --deep --sign -`) during the CI build. This produces a locally valid signature that reduces the Gatekeeper warning from "malware" to "unidentified developer," but the app is **not notarized** by Apple.
+
+Users need to right-click → Open (or run `xattr -cr`) on first launch. See the [Installation guide](./installation.md) for details.
+
+Windows binaries are currently unsigned. Authenticode signing may be added in the future.
+
 ## Useful references
 
 - [CI workflow](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/ci.yml)
