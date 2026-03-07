@@ -425,7 +425,8 @@ function setDefaultDates() {
 // ===== History =====
 function initHistory() {
     document.getElementById('history-fetch-btn').addEventListener('click', fetchHistoryFromClockify);
-    refreshHistory();
+    // Auto-fetch last 7 days on startup
+    fetchHistoryFromClockify();
 }
 
 async function refreshHistory() {

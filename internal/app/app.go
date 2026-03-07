@@ -395,6 +395,7 @@ func (a *App) GetHistory() []models.TimeEntry {
 }
 
 // GetHistoryFromClockify fetches entries from Clockify for a date range
+// and stores them in the local cache so subsequent GetHistory calls return them.
 func (a *App) GetHistoryFromClockify(startDate, endDate string) ([]models.TimeEntry, error) {
 	start, err := time.Parse("2006-01-02", startDate)
 	if err != nil {
@@ -423,6 +424,11 @@ func (a *App) GetHistoryFromClockify(startDate, endDate string) ([]models.TimeEn
 			entries[i].TicketSummary = parts[1]
 		}
 	}
+
+	// Update the local cache so refreshHistory() shows these entries
+	a.mu.Lock()
+	a.entries = entries
+	a.mu.Unlock()
 
 	return entries, nil
 }
