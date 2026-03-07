@@ -216,6 +216,20 @@ func (m *appFlowMock) handleJiraIssue(w http.ResponseWriter, r *http.Request) {
 				"issuetype": map[string]string{"name": "Task"},
 			},
 		})
+	case len(parts) == 6 && parts[5] == "worklog" && r.Method == http.MethodGet:
+		// Return worklogs for this issue
+		m.mu.Lock()
+		var worklogs []map[string]interface{}
+		for _, wl := range m.addedWorklogs {
+			if wl.IssueKey == issueKey {
+				worklogs = append(worklogs, map[string]interface{}{
+					"id":      wl.WorklogID,
+					"started": wl.Started.Format("2006-01-02T15:04:05.000+0000"),
+				})
+			}
+		}
+		m.mu.Unlock()
+		m.writeJSON(w, http.StatusOK, map[string]interface{}{"worklogs": worklogs})
 	case len(parts) == 6 && parts[5] == "worklog" && r.Method == http.MethodPost:
 		var body struct {
 			Comment          *adfDoc `json:"comment"`

@@ -478,6 +478,60 @@ func (c *Client) DeleteWorklog(issueKey, worklogID string) error {
 	return nil
 }
 
+// FindWorklogID looks up a worklog on an issue by matching the start time (within 60s tolerance).
+func (c *Client) FindWorklogID(issueKey string, started time.Time) (string, error) {
+	apiURL := fmt.Sprintf("%s/rest/api/3/issue/%s/worklog", c.baseURL, issueKey)
+
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return "", err
+	}
+	c.setHeaders(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("jira API error %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var result struct {
+		Worklogs []struct {
+			ID      string `json:"id"`
+			Started string `json:"started"`
+		} `json:"worklogs"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+
+	for _, w := range result.Worklogs {
+		// Jira returns "2006-01-02T15:04:05.000+0000"
+		t, err := time.Parse("2006-01-02T15:04:05.000+0000", w.Started)
+		if err != nil {
+			t, err = time.Parse("2006-01-02T15:04:05.000-0700", w.Started)
+			if err != nil {
+				continue
+			}
+		}
+		if absDuration(t.Sub(started)) < 60*time.Second {
+			return w.ID, nil
+		}
+	}
+	return "", nil
+}
+
+func absDuration(d time.Duration) time.Duration {
+	if d < 0 {
+		return -d
+	}
+	return d
+}
+
 func (c *Client) setHeaders(req *http.Request) {
 	req.SetBasicAuth(c.email, c.apiToken)
 	req.Header.Set("Content-Type", "application/json")

@@ -86,6 +86,12 @@ func Start() *httptest.Server {
 			return
 		}
 
+		// Jira Get Worklogs
+		if strings.HasSuffix(r.URL.Path, "worklog") && r.Method == "GET" {
+			json.NewEncoder(w).Encode(map[string]interface{}{"worklogs": []interface{}{}})
+			return
+		}
+
 		// Jira Add Worklog
 		if strings.HasSuffix(r.URL.Path, "worklog") && r.Method == "POST" {
 			w.WriteHeader(http.StatusCreated)

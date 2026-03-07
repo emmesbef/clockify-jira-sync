@@ -516,9 +516,20 @@ func (a *App) DeleteEntry(id string) error {
 	}
 
 	// Delete from Jira
-	if entry != nil && entry.JiraWorklogID != "" {
-		if err := a.jira.DeleteWorklog(entry.TicketKey, entry.JiraWorklogID); err != nil {
-			log.Printf("Warning: Failed to delete Jira worklog: %v", err)
+	if entry != nil && entry.TicketKey != "" {
+		worklogID := entry.JiraWorklogID
+		// If we don't have the worklog ID cached, look it up by start time
+		if worklogID == "" && !entry.Start.IsZero() {
+			if found, err := a.jira.FindWorklogID(entry.TicketKey, entry.Start); err != nil {
+				log.Printf("Warning: Failed to find Jira worklog: %v", err)
+			} else {
+				worklogID = found
+			}
+		}
+		if worklogID != "" {
+			if err := a.jira.DeleteWorklog(entry.TicketKey, worklogID); err != nil {
+				log.Printf("Warning: Failed to delete Jira worklog: %v", err)
+			}
 		}
 	}
 
