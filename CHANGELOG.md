@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.5](https://github.com/emmesbef/clockify-jira-sync/compare/v1.8.4...v1.8.5) (2026-03-07)
+
+
+### Bug Fixes
+
+* auto-lock ticket on key+space, hide dropdown when editing ([72434e0](https://github.com/emmesbef/clockify-jira-sync/commit/72434e0f05e4dc17b2a0631ee97c7a4a09f4885a))
+
 ## [1.8.4](https://github.com/emmesbef/clockify-jira-sync/compare/v1.8.3...v1.8.4) (2026-03-07)
 
 
