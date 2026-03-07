@@ -307,6 +307,38 @@ func (c *Client) DeleteTimeEntry(entryID string) error {
 	return nil
 }
 
+// WorkspaceInfo represents a Clockify workspace
+type WorkspaceInfo struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// GetWorkspaces returns all workspaces accessible to the authenticated user
+func (c *Client) GetWorkspaces() ([]WorkspaceInfo, error) {
+	req, err := http.NewRequest("GET", c.baseURL+"/workspaces", nil)
+	if err != nil {
+		return nil, err
+	}
+	c.setHeaders(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("clockify API error %d: %s", resp.StatusCode, string(body))
+	}
+
+	var workspaces []WorkspaceInfo
+	if err := json.NewDecoder(resp.Body).Decode(&workspaces); err != nil {
+		return nil, err
+	}
+	return workspaces, nil
+}
+
 func (c *Client) setHeaders(req *http.Request) {
 	req.Header.Set("X-Api-Key", c.apiKey)
 	req.Header.Set("Content-Type", "application/json")

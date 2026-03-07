@@ -100,6 +100,14 @@ func Start() *httptest.Server {
 			return
 		}
 
+		if r.URL.Path == "/workspaces" {
+			json.NewEncoder(w).Encode([]map[string]string{
+				{"id": "ws-mock-001", "name": "My Workspace"},
+				{"id": "ws-mock-002", "name": "Second Workspace"},
+			})
+			return
+		}
+
 		// Start manual entry / start timer
 		if strings.HasSuffix(r.URL.Path, "/time-entries") && r.Method == "POST" {
 			w.WriteHeader(http.StatusCreated)

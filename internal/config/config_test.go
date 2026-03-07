@@ -39,8 +39,16 @@ func TestLoad_Success(t *testing.T) {
 }
 
 func TestLoad_MissingRequired(t *testing.T) {
-	// Clear all explicitly
+	// Isolate from real config files
+	SetConfigDir(t.TempDir())
+	defer SetConfigDir("")
+
 	os.Unsetenv("CLOCKIFY_API_KEY")
+	os.Unsetenv("CLOCKIFY_WORKSPACE_ID")
+	os.Unsetenv("JIRA_BASE_URL")
+	os.Unsetenv("JIRA_EMAIL")
+	os.Unsetenv("JIRA_API_TOKEN")
+	os.Unsetenv("MOCK_DATA")
 
 	_, err := Load()
 	if err == nil {

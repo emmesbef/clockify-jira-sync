@@ -83,9 +83,8 @@ func Load() (*Config, error) {
 	if cfg.ClockifyAPIKey == "" {
 		return nil, fmt.Errorf("CLOCKIFY_API_KEY is required")
 	}
-	if cfg.ClockifyWorkspace == "" {
-		return nil, fmt.Errorf("CLOCKIFY_WORKSPACE_ID is required")
-	}
+	// ClockifyWorkspace may be empty at startup; the UI auto-fetches it from
+	// the Clockify API when the user provides an API key.
 	if cfg.JiraBaseURL == "" {
 		return nil, fmt.Errorf("JIRA_BASE_URL is required")
 	}

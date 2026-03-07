@@ -113,3 +113,35 @@ func TestGetTimeEntries(t *testing.T) {
 		t.Errorf("Expected duration 3600s, got %d", entries[0].Duration)
 	}
 }
+
+func TestGetWorkspaces(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/workspaces" {
+			t.Errorf("Expected path /workspaces, got %s", r.URL.Path)
+		}
+		if r.Header.Get("X-Api-Key") != "test-key" {
+			t.Errorf("Expected API key header")
+		}
+
+		json.NewEncoder(w).Encode([]WorkspaceInfo{
+			{ID: "ws-1", Name: "Workspace One"},
+			{ID: "ws-2", Name: "Workspace Two"},
+		})
+	}))
+	defer mockServer.Close()
+
+	client := NewClient("test-key", "")
+	client.baseURL = mockServer.URL
+
+	workspaces, err := client.GetWorkspaces()
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(workspaces) != 2 {
+		t.Fatalf("Expected 2 workspaces, got %d", len(workspaces))
+	}
+	if workspaces[0].ID != "ws-1" || workspaces[0].Name != "Workspace One" {
+		t.Errorf("Unexpected first workspace: %+v", workspaces[0])
+	}
+}

@@ -93,6 +93,16 @@ func (a *App) GetConfigPath() string {
 	return p
 }
 
+// FetchWorkspaces returns Clockify workspaces for the given API key.
+// It uses a temporary client so it works before config is saved.
+func (a *App) FetchWorkspaces(apiKey string) ([]clockify.WorkspaceInfo, error) {
+	tmp := clockify.NewClient(apiKey, "")
+	if a.mockURL != "" {
+		tmp.SetBaseURL(a.mockURL)
+	}
+	return tmp.GetWorkspaces()
+}
+
 // GetIntegrationStatus checks whether Clockify and Jira are currently reachable
 // with the configured credentials.
 func (a *App) GetIntegrationStatus() models.IntegrationStatus {

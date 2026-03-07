@@ -603,16 +603,52 @@ function initModeToggle() {
 }
 
 // ===== Settings =====
+
+async function fetchAndPopulateWorkspaces(apiKey, selectedId) {
+    const ws = document.getElementById('setting-clockify-ws');
+    ws.innerHTML = '<option value="">Loading…</option>';
+    try {
+        const workspaces = await App.FetchWorkspaces(apiKey);
+        ws.innerHTML = '';
+        if (!workspaces || workspaces.length === 0) {
+            ws.innerHTML = '<option value="">No workspaces found</option>';
+            return;
+        }
+        for (const w of workspaces) {
+            const opt = document.createElement('option');
+            opt.value = w.ID;
+            opt.textContent = w.Name;
+            ws.appendChild(opt);
+        }
+        // Auto-select: saved value, or the only workspace
+        if (selectedId && [...ws.options].some(o => o.value === selectedId)) {
+            ws.value = selectedId;
+        } else if (workspaces.length === 1) {
+            ws.value = workspaces[0].ID;
+        }
+    } catch (err) {
+        ws.innerHTML = '<option value="">Failed to load workspaces</option>';
+        console.error('Failed to fetch workspaces:', err);
+    }
+}
+
 function initSettings() {
     // Populate form if backend supports getting config
     if (App.GetConfig) {
         App.GetConfig().then(cfg => {
             if (cfg) {
                 document.getElementById('setting-clockify-key').value = cfg.ClockifyAPIKey || '';
-                document.getElementById('setting-clockify-ws').value = cfg.ClockifyWorkspace || '';
                 document.getElementById('setting-jira-url').value = cfg.JiraBaseURL || '';
                 document.getElementById('setting-jira-email').value = cfg.JiraEmail || '';
                 document.getElementById('setting-jira-token').value = cfg.JiraAPIToken || '';
+
+                // Load workspaces if API key is present
+                if (cfg.ClockifyAPIKey) {
+                    fetchAndPopulateWorkspaces(cfg.ClockifyAPIKey, cfg.ClockifyWorkspace);
+                } else {
+                    const ws = document.getElementById('setting-clockify-ws');
+                    ws.innerHTML = '<option value="">— enter API key to load —</option>';
+                }
             }
         }).catch(err => {
             console.error("Could not load config:", err);
@@ -622,6 +658,17 @@ function initSettings() {
     } else {
         refreshIntegrationStatus();
     }
+
+    // Auto-fetch workspaces when API key changes
+    document.getElementById('setting-clockify-key').addEventListener('blur', () => {
+        const apiKey = document.getElementById('setting-clockify-key').value.trim();
+        if (apiKey) {
+            fetchAndPopulateWorkspaces(apiKey, '');
+        } else {
+            const ws = document.getElementById('setting-clockify-ws');
+            ws.innerHTML = '<option value="">— enter API key to load —</option>';
+        }
+    });
 
     document.getElementById('settings-api-form').addEventListener('submit', async (e) => {
         e.preventDefault();
