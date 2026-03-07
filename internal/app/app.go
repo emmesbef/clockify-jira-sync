@@ -469,11 +469,22 @@ func (a *App) UpdateEntry(req models.UpdateEntryRequest) error {
 		return fmt.Errorf("failed to update Clockify entry: %w", err)
 	}
 
-	// Update Jira worklog if we have one
-	if entry != nil && entry.JiraWorklogID != "" {
-		duration := int64(end.Sub(start).Seconds())
-		if err := a.jira.UpdateWorklog(entry.TicketKey, entry.JiraWorklogID, start, duration, description); err != nil {
-			log.Printf("Warning: Failed to update Jira worklog: %v", err)
+	// Update Jira worklog
+	if entry != nil && entry.TicketKey != "" {
+		worklogID := entry.JiraWorklogID
+		// If we don't have the worklog ID cached, look it up by start time
+		if worklogID == "" && !entry.Start.IsZero() {
+			if found, err := a.jira.FindWorklogID(entry.TicketKey, entry.Start); err != nil {
+				log.Printf("Warning: Failed to find Jira worklog: %v", err)
+			} else {
+				worklogID = found
+			}
+		}
+		if worklogID != "" {
+			duration := int64(end.Sub(start).Seconds())
+			if err := a.jira.UpdateWorklog(entry.TicketKey, worklogID, start, duration, description); err != nil {
+				log.Printf("Warning: Failed to update Jira worklog: %v", err)
+			}
 		}
 	}
 
