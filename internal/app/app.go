@@ -207,7 +207,7 @@ func (a *App) GetMyTickets() ([]models.JiraTicket, error) {
 
 // SearchTickets searches Jira issues matching the query
 func (a *App) SearchTickets(query string) ([]models.JiraTicket, error) {
-	if len(strings.TrimSpace(query)) < 2 {
+	if len(strings.TrimSpace(query)) < 1 {
 		return []models.JiraTicket{}, nil
 	}
 	tickets, err := a.jira.SearchIssues(query)

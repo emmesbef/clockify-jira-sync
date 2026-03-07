@@ -459,25 +459,6 @@ body {
     min-width: 0;
 }
 
-.ticket-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 8px;
-    background: var(--accent);
-    color: #fff;
-    font-size: 11px;
-    font-weight: 700;
-    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-    white-space: nowrap;
-    line-height: 1;
-    height: 100%;
-}
-
-.ticket-badge + input {
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-}
-
 .clear-btn {
     position: absolute;
     right: 8px;

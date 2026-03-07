@@ -97,11 +97,11 @@ func (c *Client) GetMyIssues() ([]models.JiraTicket, error) {
 	return c.searchWithJQL(jql, 50)
 }
 
-// keyWithDashPattern matches "PROJ-", "PROJ-1", "PROJ-123" (case-insensitive)
-var keyWithDashPattern = regexp.MustCompile(`(?i)^([A-Z][A-Z0-9]+)-(\d*)$`)
+// keyWithDashPattern matches "P-", "P-1", "PROJ-123" (case-insensitive)
+var keyWithDashPattern = regexp.MustCompile(`(?i)^([A-Z][A-Z0-9]*)-(\d*)$`)
 
-// projectKeyPattern matches "PROJ", "PRO" (uppercase only — likely a project key)
-var projectKeyPattern = regexp.MustCompile(`^[A-Z][A-Z0-9]+$`)
+// projectKeyPattern matches "P", "PROJ", "PRO" (uppercase only — likely a project key)
+var projectKeyPattern = regexp.MustCompile(`^[A-Z][A-Z0-9]*$`)
 
 // SearchIssues searches for Jira issues matching a query.
 // It detects key-like patterns (e.g., PROJ, PROJ-1) and uses project-based

@@ -845,18 +845,18 @@ func TestGetMyTicketsAndSearchTickets(t *testing.T) {
 		t.Fatalf("expected GetMyTickets to issue the assigned-user JQL, got %v", initialSearches)
 	}
 
-	results, err := app.SearchTickets(" x ")
+	results, err := app.SearchTickets("")
 	if err != nil {
-		t.Fatalf("SearchTickets short query returned error: %v", err)
+		t.Fatalf("SearchTickets empty query returned error: %v", err)
 	}
 	if len(results) != 0 {
-		t.Fatalf("expected short search query to return no results, got %+v", results)
+		t.Fatalf("expected empty search query to return no results, got %+v", results)
 	}
 
 	mock.mu.Lock()
 	if len(mock.searchJQLs) != 1 {
 		mock.mu.Unlock()
-		t.Fatalf("expected short search query to avoid Jira calls, got %d", len(mock.searchJQLs))
+		t.Fatalf("expected empty search query to avoid Jira calls, got %d", len(mock.searchJQLs))
 	}
 	mock.mu.Unlock()
 

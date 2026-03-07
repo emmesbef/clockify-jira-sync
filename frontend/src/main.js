@@ -105,20 +105,28 @@ function initTicketSearch() {
 
     input.addEventListener('input', (e) => {
         clearTimeout(searchTimeout);
-
-        // If a ticket is already selected, let user edit description freely
-        if (selectedTicket) {
-            return;
-        }
-
         const query = input.value.trim();
 
-        if (query.length < 2) {
-            // Show assigned tickets if input is short
+        if (query.length === 0) {
             renderAssignedDropdown(dropdown);
             return;
         }
 
+        // For 1-char queries, filter cached assigned tickets locally
+        if (query.length === 1) {
+            const filtered = assignedTickets.filter(t =>
+                t.key.toUpperCase().startsWith(query.toUpperCase()) ||
+                t.summary.toUpperCase().startsWith(query.toUpperCase())
+            );
+            if (filtered.length > 0) {
+                renderDropdown(filtered, dropdown);
+            } else {
+                dropdown.classList.add('hidden');
+            }
+            return;
+        }
+
+        // For 2+ chars, query Jira (debounced)
         searchTimeout = setTimeout(async () => {
             try {
                 const tickets = await App.SearchTickets(query);
@@ -131,7 +139,7 @@ function initTicketSearch() {
 
     // Show assigned tickets when focusing empty search
     input.addEventListener('focus', () => {
-        if (!selectedTicket && input.value.trim().length < 2) {
+        if (input.value.trim().length < 2) {
             renderAssignedDropdown(dropdown);
         }
     });
@@ -188,13 +196,10 @@ function selectTicket(ticket) {
     selectedTicket = ticket;
 
     const input = document.getElementById('ticket-search');
-    const badge = document.getElementById('ticket-badge');
     const clearBtn = document.getElementById('clear-ticket-btn');
 
-    // Show ticket key as badge and summary as input value
-    badge.textContent = ticket.key;
-    badge.classList.remove('hidden');
-    input.value = ticket.summary;
+    // Show key + summary as plain editable text
+    input.value = ticket.key + ' ' + ticket.summary;
     clearBtn.classList.remove('hidden');
 
     // Hide dropdown
@@ -205,19 +210,14 @@ function selectTicket(ticket) {
     document.getElementById('manual-submit-btn').disabled = false;
 }
 
-function clearTicket(keepText) {
+function clearTicket() {
     selectedTicket = null;
 
-    const badge = document.getElementById('ticket-badge');
     const clearBtn = document.getElementById('clear-ticket-btn');
     const input = document.getElementById('ticket-search');
 
-    badge.classList.add('hidden');
-    badge.textContent = '';
     clearBtn.classList.add('hidden');
-    if (!keepText) {
-        input.value = '';
-    }
+    input.value = '';
 
     // Disable buttons
     document.getElementById('timer-start-btn').disabled = true;
