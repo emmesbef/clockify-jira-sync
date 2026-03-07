@@ -81,7 +81,7 @@ func TestStartServesClockifyEndpoints(t *testing.T) {
 	start := time.Date(2026, 3, 5, 9, 0, 0, 0, time.UTC)
 	end := start.Add(time.Hour)
 
-	startedID, err := client.StartTimer("DEV-101 Investigating mock response")
+	startedID, err := client.StartTimer("DEV-101 Investigating mock response", "")
 	if err != nil {
 		t.Fatalf("StartTimer returned error: %v", err)
 	}
@@ -89,7 +89,7 @@ func TestStartServesClockifyEndpoints(t *testing.T) {
 		t.Fatalf("expected mock timer id prefix, got %q", startedID)
 	}
 
-	manualID, err := client.CreateTimeEntry("DEV-102 Manual work", start, end)
+	manualID, err := client.CreateTimeEntry("DEV-102 Manual work", start, end, "")
 	if err != nil {
 		t.Fatalf("CreateTimeEntry returned error: %v", err)
 	}

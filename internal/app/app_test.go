@@ -15,6 +15,23 @@ import (
 	"clockify-jira-sync/internal/models"
 )
 
+// ADF types for parsing Jira v3 worklog comments in test mocks
+type adfDoc struct {
+	Type    string       `json:"type"`
+	Version int          `json:"version"`
+	Content []adfContent `json:"content"`
+}
+
+type adfContent struct {
+	Type    string        `json:"type"`
+	Content []adfTextNode `json:"content,omitempty"`
+}
+
+type adfTextNode struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}
+
 type clockifyCreateCall struct {
 	Description string
 	Start       time.Time
@@ -197,9 +214,9 @@ func (m *appFlowMock) handleJiraIssue(w http.ResponseWriter, r *http.Request) {
 		})
 	case len(parts) == 6 && parts[5] == "worklog" && r.Method == http.MethodPost:
 		var body struct {
-			Comment          string `json:"comment"`
-			Started          string `json:"started"`
-			TimeSpentSeconds int64  `json:"timeSpentSeconds"`
+			Comment          *adfDoc `json:"comment"`
+			Started          string  `json:"started"`
+			TimeSpentSeconds int64   `json:"timeSpentSeconds"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			m.writeHandlerError(w, "failed to decode Jira worklog body: %v", err)
@@ -212,13 +229,18 @@ func (m *appFlowMock) handleJiraIssue(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		comment := ""
+		if body.Comment != nil && len(body.Comment.Content) > 0 && len(body.Comment.Content[0].Content) > 0 {
+			comment = body.Comment.Content[0].Content[0].Text
+		}
+
 		m.mu.Lock()
 		m.nextWorklogID++
 		worklogID := fmt.Sprintf("wl-%d", m.nextWorklogID)
 		m.addedWorklogs = append(m.addedWorklogs, jiraWorklogCall{
 			IssueKey:         issueKey,
 			WorklogID:        worklogID,
-			Comment:          body.Comment,
+			Comment:          comment,
 			Started:          started,
 			TimeSpentSeconds: body.TimeSpentSeconds,
 		})
@@ -227,9 +249,9 @@ func (m *appFlowMock) handleJiraIssue(w http.ResponseWriter, r *http.Request) {
 		m.writeJSON(w, http.StatusCreated, map[string]string{"id": worklogID})
 	case len(parts) == 7 && parts[5] == "worklog" && r.Method == http.MethodPut:
 		var body struct {
-			Comment          string `json:"comment"`
-			Started          string `json:"started"`
-			TimeSpentSeconds int64  `json:"timeSpentSeconds"`
+			Comment          *adfDoc `json:"comment"`
+			Started          string  `json:"started"`
+			TimeSpentSeconds int64   `json:"timeSpentSeconds"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			m.writeHandlerError(w, "failed to decode Jira worklog update body: %v", err)
@@ -242,11 +264,16 @@ func (m *appFlowMock) handleJiraIssue(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		comment := ""
+		if body.Comment != nil && len(body.Comment.Content) > 0 && len(body.Comment.Content[0].Content) > 0 {
+			comment = body.Comment.Content[0].Content[0].Text
+		}
+
 		m.mu.Lock()
 		m.updatedWorklogs = append(m.updatedWorklogs, jiraWorklogCall{
 			IssueKey:         issueKey,
 			WorklogID:        parts[6],
-			Comment:          body.Comment,
+			Comment:          comment,
 			Started:          started,
 			TimeSpentSeconds: body.TimeSpentSeconds,
 		})
@@ -447,7 +474,7 @@ func (m *appFlowMock) writeHandlerError(w http.ResponseWriter, format string, ar
 func TestStartTimerAndStopTimerLifecycle(t *testing.T) {
 	app, mock := newFlowApp(t)
 
-	timer, err := app.StartTimer("PROJ-101")
+	timer, err := app.StartTimer("PROJ-101", "")
 	if err != nil {
 		t.Fatalf("StartTimer returned error: %v", err)
 	}
@@ -856,7 +883,7 @@ func TestGetMyTicketsAndSearchTickets(t *testing.T) {
 func TestShutdownStopsRunningTimer(t *testing.T) {
 	app, mock := newFlowApp(t)
 
-	timer, err := app.StartTimer("PROJ-303")
+	timer, err := app.StartTimer("PROJ-303", "")
 	if err != nil {
 		t.Fatalf("StartTimer returned error: %v", err)
 	}

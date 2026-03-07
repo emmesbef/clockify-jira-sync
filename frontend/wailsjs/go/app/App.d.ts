@@ -19,6 +19,8 @@ export function GetIntegrationStatus():Promise<models.IntegrationStatus>;
 
 export function GetMyTickets():Promise<Array<models.JiraTicket>>;
 
+export function GetProjects():Promise<Array<any>>;
+
 export function GetTimerStatus():Promise<models.TimerState>;
 
 export function SaveConfig(arg1:config.Config):Promise<void>;
@@ -27,7 +29,7 @@ export function SearchTickets(arg1:string):Promise<Array<models.JiraTicket>>;
 
 export function SetMockMode(arg1:string):Promise<void>;
 
-export function StartTimer(arg1:string):Promise<models.TimerState>;
+export function StartTimer(arg1:string,arg2:string):Promise<models.TimerState>;
 
 export function StopTimer():Promise<models.TimeEntry>;
 

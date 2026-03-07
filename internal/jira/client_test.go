@@ -78,8 +78,8 @@ func TestAddWorklog(t *testing.T) {
 		if req.TimeSpentSeconds != 3600 {
 			t.Errorf("Expected 3600 seconds, got %d", req.TimeSpentSeconds)
 		}
-		if req.Comment != "Worked on PROJ-123" {
-			t.Errorf("Expected comment 'Worked on PROJ-123'")
+		if req.Comment == nil || req.Comment.Content[0].Content[0].Text != "Worked on PROJ-123" {
+			t.Errorf("Expected ADF comment with 'Worked on PROJ-123'")
 		}
 
 		w.WriteHeader(http.StatusCreated)

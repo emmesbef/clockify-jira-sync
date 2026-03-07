@@ -10,8 +10,16 @@ export function DeleteEntry(arg1) {
   return window['go']['app']['App']['DeleteEntry'](arg1);
 }
 
+export function FetchWorkspaces(arg1) {
+  return window['go']['app']['App']['FetchWorkspaces'](arg1);
+}
+
 export function GetConfig() {
   return window['go']['app']['App']['GetConfig']();
+}
+
+export function GetConfigPath() {
+  return window['go']['app']['App']['GetConfigPath']();
 }
 
 export function GetDetectedBranches() {
@@ -30,8 +38,16 @@ export function GetIntegrationStatus() {
   return window['go']['app']['App']['GetIntegrationStatus']();
 }
 
+export function GetVersion() {
+  return window['go']['app']['App']['GetVersion']();
+}
+
 export function GetMyTickets() {
   return window['go']['app']['App']['GetMyTickets']();
+}
+
+export function GetProjects() {
+  return window['go']['app']['App']['GetProjects']();
 }
 
 export function GetTimerStatus() {
@@ -50,8 +66,8 @@ export function SetMockMode(arg1) {
   return window['go']['app']['App']['SetMockMode'](arg1);
 }
 
-export function StartTimer(arg1) {
-  return window['go']['app']['App']['StartTimer'](arg1);
+export function StartTimer(arg1, arg2) {
+  return window['go']['app']['App']['StartTimer'](arg1, arg2);
 }
 
 export function StopTimer() {

@@ -193,11 +193,43 @@ func (c *Client) Ping() error {
 	return nil
 }
 
+// adfText wraps a plain text string in Atlassian Document Format (ADF),
+// which is required by Jira v3 API for rich-text fields like worklog comments.
+type adfDoc struct {
+	Type    string       `json:"type"`
+	Version int          `json:"version"`
+	Content []adfContent `json:"content"`
+}
+
+type adfContent struct {
+	Type    string        `json:"type"`
+	Content []adfTextNode `json:"content,omitempty"`
+}
+
+type adfTextNode struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}
+
+func newADFComment(text string) *adfDoc {
+	if text == "" {
+		return nil
+	}
+	return &adfDoc{
+		Type:    "doc",
+		Version: 1,
+		Content: []adfContent{{
+			Type:    "paragraph",
+			Content: []adfTextNode{{Type: "text", Text: text}},
+		}},
+	}
+}
+
 // worklogRequest is the request body for creating/updating a worklog
 type worklogRequest struct {
-	Comment          string `json:"comment,omitempty"`
-	Started          string `json:"started"`
-	TimeSpentSeconds int64  `json:"timeSpentSeconds"`
+	Comment          *adfDoc `json:"comment,omitempty"`
+	Started          string  `json:"started"`
+	TimeSpentSeconds int64   `json:"timeSpentSeconds"`
 }
 
 // worklogResponse is the Jira worklog response
@@ -210,7 +242,7 @@ func (c *Client) AddWorklog(issueKey string, started time.Time, timeSpentSeconds
 	apiURL := fmt.Sprintf("%s/rest/api/3/issue/%s/worklog", c.baseURL, issueKey)
 
 	body := worklogRequest{
-		Comment:          comment,
+		Comment:          newADFComment(comment),
 		Started:          started.Format("2006-01-02T15:04:05.000-0700"),
 		TimeSpentSeconds: timeSpentSeconds,
 	}
@@ -245,7 +277,7 @@ func (c *Client) UpdateWorklog(issueKey, worklogID string, started time.Time, ti
 	apiURL := fmt.Sprintf("%s/rest/api/3/issue/%s/worklog/%s", c.baseURL, issueKey, worklogID)
 
 	body := worklogRequest{
-		Comment:          comment,
+		Comment:          newADFComment(comment),
 		Started:          started.Format("2006-01-02T15:04:05.000-0700"),
 		TimeSpentSeconds: timeSpentSeconds,
 	}

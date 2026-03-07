@@ -139,6 +139,11 @@ func (a *App) FetchWorkspaces(apiKey string) ([]clockify.WorkspaceInfo, error) {
 	return tmp.GetWorkspaces()
 }
 
+// GetProjects returns Clockify projects for the configured workspace
+func (a *App) GetProjects() ([]clockify.ProjectInfo, error) {
+	return a.clockify.GetProjects()
+}
+
 // GetIntegrationStatus checks whether Clockify and Jira are currently reachable
 // with the configured credentials.
 func (a *App) GetIntegrationStatus() models.IntegrationStatus {
@@ -215,7 +220,7 @@ func (a *App) SearchTickets(query string) ([]models.JiraTicket, error) {
 // --- Timer Methods ---
 
 // StartTimer begins tracking time for a ticket
-func (a *App) StartTimer(ticketKey string) (*models.TimerState, error) {
+func (a *App) StartTimer(ticketKey string, projectID string) (*models.TimerState, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -231,7 +236,7 @@ func (a *App) StartTimer(ticketKey string) (*models.TimerState, error) {
 
 	// Start in Clockify
 	description := fmt.Sprintf("%s %s", ticketKey, ticket.Summary)
-	clockifyID, err := a.clockify.StartTimer(description)
+	clockifyID, err := a.clockify.StartTimer(description, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start Clockify timer: %w", err)
 	}
@@ -345,7 +350,7 @@ func (a *App) AddManualEntry(req models.ManualEntryRequest) (*models.TimeEntry, 
 	}
 
 	// Create in Clockify
-	clockifyID, err := a.clockify.CreateTimeEntry(description, start, end)
+	clockifyID, err := a.clockify.CreateTimeEntry(description, start, end, req.ProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Clockify entry: %w", err)
 	}

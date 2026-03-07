@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initModeToggle();
     initSettings();
     loadAssignedTickets();
+    loadProjects();
     checkTimerStatus();
     setDefaultDates();
 });
@@ -96,6 +97,7 @@ function updateThemeIcon(pref, effective) {
 
 // ===== Ticket Search =====
 let searchTimeout;
+let assignedTickets = []; // cached assigned tickets for focus dropdown
 
 function initTicketSearch() {
     const input = document.getElementById('ticket-search');
@@ -105,8 +107,14 @@ function initTicketSearch() {
         const query = e.target.value.trim();
         clearTimeout(searchTimeout);
 
+        // If a ticket is selected and user starts typing, clear selection
+        if (selectedTicket) {
+            clearTicket(true); // keep text in input
+        }
+
         if (query.length < 2) {
-            dropdown.classList.add('hidden');
+            // Show assigned tickets if input is short
+            renderAssignedDropdown(dropdown);
             return;
         }
 
@@ -117,42 +125,33 @@ function initTicketSearch() {
             } catch (err) {
                 showToast('Search failed: ' + err, 'error');
             }
-        }, 300); // debounce 300ms
+        }, 300);
     });
 
     // Show assigned tickets when focusing empty search
     input.addEventListener('focus', () => {
-        if (!input.value.trim() && !selectedTicket) {
-            document.getElementById('assigned-tickets').classList.remove('hidden');
+        if (!selectedTicket && input.value.trim().length < 2) {
+            renderAssignedDropdown(dropdown);
         }
     });
 
-    // Close dropdowns on outside click
+    // Close dropdown on outside click
     document.addEventListener('click', (e) => {
-        if (!e.target.closest('.search-container') && !e.target.closest('#assigned-tickets') && !e.target.closest('#toggle-assigned-btn')) {
+        if (!e.target.closest('.search-container')) {
             dropdown.classList.add('hidden');
-            document.getElementById('assigned-tickets').classList.add('hidden');
         }
     });
 
     // Clear ticket button
-    document.getElementById('clear-ticket-btn').addEventListener('click', clearTicket);
+    document.getElementById('clear-ticket-btn').addEventListener('click', () => clearTicket());
+}
 
-    // Toggle assigned tickets link
-    const toggleAssignedBtn = document.getElementById('toggle-assigned-btn');
-    if (toggleAssignedBtn) {
-        toggleAssignedBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const list = document.getElementById('assigned-tickets');
-            if (list.classList.contains('hidden')) {
-                list.classList.remove('hidden');
-                toggleAssignedBtn.textContent = '❖ Hide tickets';
-            } else {
-                list.classList.add('hidden');
-                toggleAssignedBtn.textContent = '❖ Show all my tickets';
-            }
-        });
+function renderAssignedDropdown(dropdown) {
+    if (!assignedTickets || assignedTickets.length === 0) {
+        dropdown.classList.add('hidden');
+        return;
     }
+    renderDropdown(assignedTickets, dropdown);
 }
 
 function renderDropdown(tickets, dropdown) {
@@ -178,8 +177,6 @@ function renderDropdown(tickets, dropdown) {
                 status: item.dataset.status,
                 issueType: item.dataset.type,
             });
-            dropdown.classList.add('hidden');
-            document.getElementById('ticket-search').value = '';
         });
     });
 
@@ -189,29 +186,37 @@ function renderDropdown(tickets, dropdown) {
 function selectTicket(ticket) {
     selectedTicket = ticket;
 
-    document.getElementById('selected-key').textContent = ticket.key;
-    document.getElementById('selected-type').textContent = ticket.issueType || 'Task';
-    document.getElementById('selected-summary').textContent = ticket.summary;
-    document.getElementById('selected-status').textContent = ticket.status;
-    document.getElementById('selected-ticket').classList.remove('hidden');
+    const input = document.getElementById('ticket-search');
+    const badge = document.getElementById('ticket-badge');
+    const clearBtn = document.getElementById('clear-ticket-btn');
 
-    document.getElementById('selected-type').classList.remove('hidden');
-    document.getElementById('selected-status').classList.remove('hidden');
+    // Show ticket key as badge and summary as input value
+    badge.textContent = ticket.key;
+    badge.classList.remove('hidden');
+    input.value = ticket.summary;
+    clearBtn.classList.remove('hidden');
 
+    // Hide dropdown
     document.getElementById('search-results').classList.add('hidden');
-    document.getElementById('assigned-tickets').classList.add('hidden');
-    document.querySelector('.search-container').classList.add('hidden');
 
     // Enable buttons
     document.getElementById('timer-start-btn').disabled = false;
     document.getElementById('manual-submit-btn').disabled = false;
 }
 
-function clearTicket() {
+function clearTicket(keepText) {
     selectedTicket = null;
-    document.getElementById('selected-ticket').classList.add('hidden');
-    document.querySelector('.search-container').classList.remove('hidden');
-    document.getElementById('ticket-search').value = '';
+
+    const badge = document.getElementById('ticket-badge');
+    const clearBtn = document.getElementById('clear-ticket-btn');
+    const input = document.getElementById('ticket-search');
+
+    badge.classList.add('hidden');
+    badge.textContent = '';
+    clearBtn.classList.add('hidden');
+    if (!keepText) {
+        input.value = '';
+    }
 
     // Disable buttons
     document.getElementById('timer-start-btn').disabled = true;
@@ -219,42 +224,29 @@ function clearTicket() {
 }
 
 async function loadAssignedTickets() {
-    const container = document.getElementById('assigned-list');
     try {
         const tickets = await App.GetMyTickets();
-        if (!tickets || tickets.length === 0) {
-            container.innerHTML = '<div class="empty-state"><p>No assigned tickets found</p></div>';
-            return;
-        }
-
-        container.innerHTML = tickets.map(t => `
-            <div class="ticket-item" data-key="${t.key}" data-summary="${escapeHtml(t.summary)}" data-status="${t.status}" data-type="${t.issueType}">
-                <span class="ticket-key">${t.key}</span>
-                <span class="ticket-summary">${escapeHtml(t.summary)}</span>
-            </div>
-        `).join('');
-
-        container.querySelectorAll('.ticket-item').forEach(item => {
-            item.addEventListener('click', () => {
-                selectTicket({
-                    key: item.dataset.key,
-                    summary: item.dataset.summary,
-                    status: item.dataset.status,
-                    issueType: item.dataset.type,
-                });
-                document.getElementById('assigned-tickets').classList.add('hidden');
-                document.getElementById('toggle-assigned-btn').textContent = '❖ Show all my tickets';
-            });
-        });
-
-        // Update count label if it exists
-        const countLabel = document.getElementById('assigned-count');
-        if (countLabel) {
-            countLabel.textContent = `${tickets.length} open issues assigned to you`;
-        }
+        assignedTickets = tickets || [];
     } catch (err) {
-        container.innerHTML = `<div class="empty-state"><p>Failed to load tickets</p></div>`;
+        assignedTickets = [];
         console.error('Failed to load assigned tickets:', err);
+    }
+}
+
+async function loadProjects() {
+    const select = document.getElementById('project-select');
+    try {
+        const projects = await App.GetProjects();
+        if (!projects || projects.length === 0) return;
+
+        projects.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.clientName ? `${p.name} (${p.clientName})` : p.name;
+            select.appendChild(opt);
+        });
+    } catch (err) {
+        console.error('Failed to load projects:', err);
     }
 }
 
@@ -271,7 +263,8 @@ async function startTimer() {
     }
 
     try {
-        const state = await App.StartTimer(selectedTicket.key);
+        const projectId = document.getElementById('project-select').value || '';
+        const state = await App.StartTimer(selectedTicket.key, projectId);
         timerStartTime = new Date(state.startedAt);
         showTimerRunning(selectedTicket.key, selectedTicket.summary);
         showToast(`Timer started for ${selectedTicket.key}`, 'success');
@@ -332,6 +325,7 @@ async function checkTimerStatus() {
         if (status && status.running) {
             timerStartTime = new Date(status.startedAt);
             selectedTicket = { key: status.ticketKey, summary: status.ticketSummary };
+            selectTicket(selectedTicket);
             showTimerRunning(status.ticketKey, status.ticketSummary);
         }
     } catch (err) {
@@ -354,6 +348,7 @@ function initManualEntry() {
             startTime: document.getElementById('manual-start').value,
             endTime: document.getElementById('manual-end').value,
             description: document.getElementById('ticket-search').value.trim(),
+            projectId: document.getElementById('project-select').value || '',
         };
 
         if (!req.date || !req.startTime || !req.endTime) {

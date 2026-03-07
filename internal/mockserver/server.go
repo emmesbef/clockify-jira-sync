@@ -108,6 +108,15 @@ func Start() *httptest.Server {
 			return
 		}
 
+		// Clockify Projects
+		if strings.HasSuffix(r.URL.Path, "/projects") && r.Method == "GET" {
+			json.NewEncoder(w).Encode([]map[string]interface{}{
+				{"id": "proj-mock-001", "name": "Project Alpha", "clientName": "Client A", "archived": false},
+				{"id": "proj-mock-002", "name": "Project Beta", "clientName": "Client B", "archived": false},
+			})
+			return
+		}
+
 		// Start manual entry / start timer
 		if strings.HasSuffix(r.URL.Path, "/time-entries") && r.Method == "POST" {
 			w.WriteHeader(http.StatusCreated)

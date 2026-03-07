@@ -54,7 +54,7 @@ func TestStartTimer(t *testing.T) {
 	client := NewClient("test-key", "test-ws")
 	client.baseURL = mockServer.URL
 
-	entryID, err := client.StartTimer("PROJ-123 Working on tests")
+	entryID, err := client.StartTimer("PROJ-123 Working on tests", "")
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}

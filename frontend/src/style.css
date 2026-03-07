@@ -448,6 +448,54 @@ body {
 .search-container {
     position: relative;
     margin-bottom: var(--space-md);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0;
+}
+
+.search-container input {
+    flex: 1;
+    min-width: 0;
+}
+
+.ticket-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+    white-space: nowrap;
+    line-height: 1;
+    height: 100%;
+}
+
+.ticket-badge + input {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.clear-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    z-index: 2;
+}
+
+.clear-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-input);
 }
 
 .dropdown {
@@ -507,35 +555,7 @@ body {
     color: var(--text-secondary);
 }
 
-/* Inline dropdown for assigned tickets (not absolutely positioned) */
-.inline-dropdown {
-    position: relative;
-    top: auto;
-    margin-top: 0;
-    margin-bottom: var(--space-md);
-}
-
-/* ===== Selected Ticket ===== */
-/* ===== Selected Ticket ===== */
-.selected-ticket {
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-md);
-    padding: var(--space-sm) var(--space-md);
-    margin-bottom: var(--space-md);
-    animation: slideDown var(--transition-slow) forwards;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.ticket-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    flex: 1;
-    min-width: 0;
-}
+/* ===== Ticket Display ===== */
 
 .ticket-key {
     font-weight: 700;

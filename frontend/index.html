@@ -82,37 +82,18 @@
                     <div class="form-group">
                         <label class="form-label">Description</label>
                         <div class="search-container">
+                            <span class="ticket-badge hidden" id="ticket-badge"></span>
                             <input type="text" id="ticket-search" class="input input-dark"
-                                placeholder="Type ticket key or description..." autocomplete="off" />
+                                placeholder="Search tickets or type a description..." autocomplete="off" />
+                            <button id="clear-ticket-btn" class="clear-btn hidden" title="Clear ticket">✕</button>
                             <div id="search-results" class="dropdown hidden"></div>
                         </div>
-                    </div>
-
-                    <div class="issues-summary row-between">
-                        <span class="muted-text" id="assigned-count">Loading open issues...</span>
-                        <a href="#" class="action-link" id="toggle-assigned-btn">❖ Show all my tickets</a>
-                    </div>
-
-                    <div id="assigned-tickets" class="dropdown hidden inline-dropdown">
-                        <div id="assigned-list" class="ticket-items">
-                            <div class="loading-spinner">Loading...</div>
-                        </div>
-                    </div>
-
-                    <div id="selected-ticket" class="selected-ticket hidden">
-                        <div class="ticket-info">
-                            <span class="ticket-key" id="selected-key"></span>
-                            <span class="ticket-summary" id="selected-summary"></span>
-                        </div>
-                        <button id="clear-ticket-btn" class="icon-btn btn-sm" title="Clear ticket">✕</button>
-                        <span class="ticket-type hidden" id="selected-type"></span>
-                        <span class="ticket-status hidden" id="selected-status"></span>
                     </div>
 
                     <div class="form-group margin-top-auto">
                         <label class="form-label">Project</label>
                         <select class="input input-dark select-input" id="project-select">
-                            <option>— Default project —</option>
+                            <option value="">— No project —</option>
                         </select>
                     </div>
 

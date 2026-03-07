@@ -56,6 +56,7 @@ type ManualEntryRequest struct {
 	Date        string `json:"date"`      // YYYY-MM-DD
 	StartTime   string `json:"startTime"` // HH:MM
 	EndTime     string `json:"endTime"`   // HH:MM
+	ProjectID   string `json:"projectId"` // Clockify project ID (optional)
 }
 
 // UpdateEntryRequest is the request body for updating a time entry

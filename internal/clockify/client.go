@@ -144,10 +144,13 @@ func (c *Client) GetTimeEntries(start, end time.Time) ([]models.TimeEntry, error
 }
 
 // StartTimer starts a new running time entry in Clockify
-func (c *Client) StartTimer(description string) (string, error) {
+func (c *Client) StartTimer(description string, projectID string) (string, error) {
 	body := map[string]interface{}{
 		"start":       time.Now().UTC().Format("2006-01-02T15:04:05.000Z"),
 		"description": description,
+	}
+	if projectID != "" {
+		body["projectId"] = projectID
 	}
 	jsonBody, _ := json.Marshal(body)
 
@@ -223,11 +226,14 @@ func (c *Client) StopTimer() (*models.TimeEntry, error) {
 }
 
 // CreateTimeEntry creates a completed time entry (manual entry)
-func (c *Client) CreateTimeEntry(description string, start, end time.Time) (string, error) {
+func (c *Client) CreateTimeEntry(description string, start, end time.Time, projectID string) (string, error) {
 	body := map[string]interface{}{
 		"start":       start.UTC().Format("2006-01-02T15:04:05.000Z"),
 		"end":         end.UTC().Format("2006-01-02T15:04:05.000Z"),
 		"description": description,
+	}
+	if projectID != "" {
+		body["projectId"] = projectID
 	}
 	jsonBody, _ := json.Marshal(body)
 
@@ -313,6 +319,21 @@ type WorkspaceInfo struct {
 	Name string `json:"name"`
 }
 
+// ProjectInfo represents a Clockify project
+type ProjectInfo struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	ClientName string `json:"clientName"`
+}
+
+// clockifyProject is the raw API response for a project
+type clockifyProject struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	ClientName string `json:"clientName"`
+	Archived   bool   `json:"archived"`
+}
+
 // GetWorkspaces returns all workspaces accessible to the authenticated user
 func (c *Client) GetWorkspaces() ([]WorkspaceInfo, error) {
 	req, err := http.NewRequest("GET", c.baseURL+"/workspaces", nil)
@@ -337,6 +358,42 @@ func (c *Client) GetWorkspaces() ([]WorkspaceInfo, error) {
 		return nil, err
 	}
 	return workspaces, nil
+}
+
+// GetProjects returns all non-archived projects for the current workspace
+func (c *Client) GetProjects() ([]ProjectInfo, error) {
+	url := fmt.Sprintf("%s/workspaces/%s/projects?archived=false&page-size=200", c.baseURL, c.workspaceID)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	c.setHeaders(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("clockify API error %d: %s", resp.StatusCode, string(body))
+	}
+
+	var projects []clockifyProject
+	if err := json.NewDecoder(resp.Body).Decode(&projects); err != nil {
+		return nil, err
+	}
+
+	result := make([]ProjectInfo, 0, len(projects))
+	for _, p := range projects {
+		result = append(result, ProjectInfo{
+			ID:         p.ID,
+			Name:       p.Name,
+			ClientName: p.ClientName,
+		})
+	}
+	return result, nil
 }
 
 func (c *Client) setHeaders(req *http.Request) {
