@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.6](https://github.com/emmesbef/clockify-jira-sync/compare/v1.8.5...v1.8.6) (2026-03-07)
+
+
+### Bug Fixes
+
+* persist fetched history in cache, auto-fetch on startup ([e9c7054](https://github.com/emmesbef/clockify-jira-sync/commit/e9c7054534ec3b6dec68daca1f389d9c00dac175))
+
 ## [1.8.5](https://github.com/emmesbef/clockify-jira-sync/compare/v1.8.4...v1.8.5) (2026-03-07)
 
 

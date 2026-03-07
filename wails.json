@@ -13,7 +13,7 @@
   "info": {
     "companyName": "Fabian Emmesberger",
     "productName": "Clockify ↔ Jira Time Sync",
-    "productVersion": "1.8.5",
+    "productVersion": "1.8.6",
     "copyright": "Copyright © 2026 Fabian Emmesberger",
     "comments": "MIT Licensed"
   }
