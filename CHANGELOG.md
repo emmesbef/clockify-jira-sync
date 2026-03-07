@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/emmesbef/clockify-jira-sync/compare/v1.7.0...v1.7.1) (2026-03-07)
+
+
+### Bug Fixes
+
+* escape JQL special chars and fix input after ticket selection ([c1a4752](https://github.com/emmesbef/clockify-jira-sync/commit/c1a47520b782d639160a4dc4bdce32c76d94af0e))
+
 ## [1.7.0](https://github.com/emmesbef/clockify-jira-sync/compare/v1.6.2...v1.7.0) (2026-03-07)
 
 
