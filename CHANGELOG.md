@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/emmesbef/clockify-jira-sync/compare/v1.4.0...v1.4.1) (2026-03-07)
+
+
+### Bug Fixes
+
+* use GitHub API for homebrew-tap updates ([7421d51](https://github.com/emmesbef/clockify-jira-sync/commit/7421d51cae0cba7e122bb2ba7a7e804df6dc6d09))
+
 ## [1.4.0](https://github.com/emmesbef/clockify-jira-sync/compare/v1.3.2...v1.4.0) (2026-03-07)
 
 
