@@ -32,8 +32,7 @@
 }
 
 /* Dark Theme (Default/Only) */
-[data-theme="dark"],
-[data-theme="light"] {
+[data-theme="dark"] {
     --bg-primary: #121214;
     --bg-secondary: #1a1a1f;
     --bg-card: #121214;
@@ -415,16 +414,6 @@ body {
     transition: all var(--transition-fast);
 }
 
-.input-dark {
-    background: #1e1e24;
-    /* Slightly lighter than pure black */
-    border: 1px solid #2a2a30;
-}
-
-.input-dark:focus {
-    border-color: var(--accent);
-    background: #25252b;
-}
 
 .select-input {
     appearance: none;
