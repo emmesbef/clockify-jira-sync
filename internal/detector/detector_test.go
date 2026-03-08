@@ -61,36 +61,6 @@ func TestDeduplicateWorkspaces(t *testing.T) {
 	}
 }
 
-func TestParseVSCodeStorageFiltersGitReposAndDecodesSpaces(t *testing.T) {
-	skipDetectorShellTestsOnWindows(t)
-
-	repo := createGitRepo(t, "feature/PROJ-123-storage")
-	spacedRepo := createNamedGitRepo(t, "repo with space", "feature/PROJ-456-space")
-	nonRepo := filepath.Join(t.TempDir(), "plain-folder")
-	if err := os.MkdirAll(nonRepo, 0o755); err != nil {
-		t.Fatalf("failed to create non-repo directory: %v", err)
-	}
-
-	storagePath := filepath.Join(t.TempDir(), "storage.json")
-	content := fmt.Sprintf(
-		`{"recent":["file://%s","file://%s","file://%s"]}`,
-		repo,
-		strings.ReplaceAll(spacedRepo, " ", "%20"),
-		nonRepo,
-	)
-	if err := os.WriteFile(storagePath, []byte(content), 0o644); err != nil {
-		t.Fatalf("failed to write storage file: %v", err)
-	}
-
-	d := NewDetector(time.Second)
-	paths := d.parseVSCodeStorage(storagePath)
-	assertSameStringSet(t, paths, []string{repo, spacedRepo})
-
-	if missing := d.parseVSCodeStorage(filepath.Join(t.TempDir(), "missing.json")); len(missing) != 0 {
-		t.Fatalf("expected missing storage file to return no paths, got %v", missing)
-	}
-}
-
 func TestExtractPathsFromCmdLineFiltersFlagsAndNonRepos(t *testing.T) {
 	repo := createGitRepo(t, "feature/APP-45-cmdline")
 	nonRepo := filepath.Join(t.TempDir(), "plain-folder")
@@ -129,29 +99,27 @@ func TestGitRepoHelpers(t *testing.T) {
 	}
 }
 
-func TestFindIDEWorkspacesUsesProcessListAndRecentStorage(t *testing.T) {
+func TestFindIDEWorkspacesUsesProcessList(t *testing.T) {
 	skipDetectorShellTestsOnWindows(t)
 
 	repoFromProcess := createGitRepo(t, "feature/PROJ-101-process")
-	repoFromStorage := createNamedGitRepo(t, "repo from storage", "feature/PROJ-202-storage")
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	psOutputFile := installFakePS(t)
 	setFakePSOutput(t, psOutputFile, strings.Join([]string{
-		"user 100 0.0 0.1 Electron Visual Studio Code helper",
-		fmt.Sprintf("user 101 0.0 0.2 Code --reuse-window %s", repoFromProcess),
-		fmt.Sprintf("user 102 0.0 0.2 Code %s", filepath.Join(t.TempDir(), "not-a-repo")),
+		"Electron Visual Studio Code helper",
+		fmt.Sprintf("/Applications/Visual Studio Code.app/Contents/MacOS/Electron --folder-uri=file://%s", repoFromProcess),
+		fmt.Sprintf("/Applications/Visual Studio Code.app/Contents/MacOS/Electron --folder-uri=file://%s", filepath.Join(t.TempDir(), "not-a-repo")),
 	}, "\n"))
-	writeVSCodeStorage(t, home, repoFromProcess, repoFromStorage)
 
 	d := NewDetector(time.Second)
 	workspaces := d.findIDEWorkspaces()
 
-	if len(workspaces) != 2 {
-		t.Fatalf("expected 2 unique workspaces, got %d (%+v)", len(workspaces), workspaces)
+	if len(workspaces) != 1 {
+		t.Fatalf("expected 1 workspace, got %d (%+v)", len(workspaces), workspaces)
 	}
 
-	assertSameStringSet(t, workspacePaths(workspaces), []string{repoFromProcess, repoFromStorage})
+	assertSameStringSet(t, workspacePaths(workspaces), []string{repoFromProcess})
 	for _, ws := range workspaces {
 		if ws.ide != "VS Code" {
 			t.Fatalf("expected IDE label to be VS Code, got %q", ws.ide)
@@ -166,7 +134,7 @@ func TestScanUpdatesDetectionsAndDeduplicatesNotifications(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	psOutputFile := installFakePS(t)
-	setFakePSOutput(t, psOutputFile, fmt.Sprintf("user 201 0.0 0.2 Code %s\n", repo))
+	setFakePSOutput(t, psOutputFile, fmt.Sprintf("/Applications/Visual Studio Code.app/Contents/MacOS/Electron --folder-uri=file://%s\n", repo))
 
 	d := NewDetector(10 * time.Millisecond)
 	notifications := make(chan models.BranchDetection, 4)
@@ -210,7 +178,7 @@ func TestStartPerformsInitialScanAndStopsOnCancel(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	psOutputFile := installFakePS(t)
-	setFakePSOutput(t, psOutputFile, fmt.Sprintf("user 301 0.0 0.2 Code %s\n", repo))
+	setFakePSOutput(t, psOutputFile, fmt.Sprintf("/Applications/Visual Studio Code.app/Contents/MacOS/Electron --folder-uri=file://%s\n", repo))
 
 	d := NewDetector(25 * time.Millisecond)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -232,6 +200,91 @@ func TestStartPerformsInitialScanAndStopsOnCancel(t *testing.T) {
 	case <-done:
 	case <-time.After(time.Second):
 		t.Fatal("detector did not stop after context cancellation")
+	}
+}
+
+func TestIsProtectedPath(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	tests := []struct {
+		name      string
+		path      string
+		protected bool
+	}{
+		{"Documents dir", filepath.Join(home, "Documents"), true},
+		{"Inside Documents", filepath.Join(home, "Documents", "project"), true},
+		{"Desktop dir", filepath.Join(home, "Desktop"), true},
+		{"Downloads dir", filepath.Join(home, "Downloads"), true},
+		{"Library dir", filepath.Join(home, "Library"), true},
+		{"Inside Library", filepath.Join(home, "Library", "Application Support"), true},
+		{"iCloud Drive path", filepath.Join(home, "Library", "Mobile Documents", "com~apple~CloudDocs"), true},
+		{"Movies dir", filepath.Join(home, "Movies"), true},
+		{"Music dir", filepath.Join(home, "Music"), true},
+		{"Pictures dir", filepath.Join(home, "Pictures"), true},
+		{"External volume", "/Volumes/iDrive/project", true},
+		{"External drive", "/Volumes/Backup/repo", true},
+		{"Home itself", home, false},
+		{"Projects dir", filepath.Join(home, "Projects", "my-app"), false},
+		{"Git dir", filepath.Join(home, "git", "my-repo"), false},
+		{"Similar prefix", filepath.Join(home, "DocumentsBackup"), false},
+		{"Unrelated path", "/tmp/some-repo", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isProtectedPath(tt.path); got != tt.protected {
+				t.Errorf("isProtectedPath(%q) = %v, want %v", tt.path, got, tt.protected)
+			}
+		})
+	}
+}
+
+func TestExtractFolderURIs(t *testing.T) {
+	tests := []struct {
+		name     string
+		line     string
+		expected []string
+	}{
+		{
+			"Standard folder-uri",
+			"/Applications/Visual Studio Code.app/Contents/MacOS/Electron --folder-uri=file:///Users/dev/project",
+			[]string{"/Users/dev/project"},
+		},
+		{
+			"Space encoded in path",
+			"Electron --folder-uri=file:///Users/dev/my%20project",
+			[]string{"/Users/dev/my project"},
+		},
+		{
+			"Multiple folder-uris",
+			"Electron --folder-uri=file:///repo/a --folder-uri=file:///repo/b",
+			[]string{"/repo/a", "/repo/b"},
+		},
+		{
+			"No folder-uri",
+			"Electron --reuse-window /some/path",
+			nil,
+		},
+		{
+			"Empty line",
+			"",
+			nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extractFolderURIs(tt.line)
+			if len(got) != len(tt.expected) {
+				t.Fatalf("extractFolderURIs() = %v, want %v", got, tt.expected)
+			}
+			for i := range got {
+				if got[i] != tt.expected[i] {
+					t.Errorf("extractFolderURIs()[%d] = %q, want %q", i, got[i], tt.expected[i])
+				}
+			}
+		})
 	}
 }
 
@@ -306,34 +359,6 @@ func setFakePSOutput(t *testing.T, path, output string) {
 	t.Helper()
 	if err := os.WriteFile(path, []byte(output), 0o644); err != nil {
 		t.Fatalf("failed to update fake ps output: %v", err)
-	}
-}
-
-func writeVSCodeStorage(t *testing.T, home string, repoPaths ...string) {
-	t.Helper()
-	storagePaths := []string{}
-	switch runtime.GOOS {
-	case "darwin":
-		storagePaths = []string{filepath.Join(home, "Library", "Application Support", "Code", "storage.json")}
-	case "linux":
-		storagePaths = []string{filepath.Join(home, ".config", "Code", "storage.json")}
-	default:
-		t.Skipf("unsupported runtime for VS Code storage test: %s", runtime.GOOS)
-	}
-
-	encoded := make([]string, 0, len(repoPaths))
-	for _, repoPath := range repoPaths {
-		encoded = append(encoded, fmt.Sprintf("\"file://%s\"", strings.ReplaceAll(repoPath, " ", "%20")))
-	}
-	content := fmt.Sprintf(`{"recent":[%s]}`+"\n", strings.Join(encoded, ","))
-
-	for _, storagePath := range storagePaths {
-		if err := os.MkdirAll(filepath.Dir(storagePath), 0o755); err != nil {
-			t.Fatalf("failed to create storage directory: %v", err)
-		}
-		if err := os.WriteFile(storagePath, []byte(content), 0o644); err != nil {
-			t.Fatalf("failed to write storage file %s: %v", storagePath, err)
-		}
 	}
 }
 

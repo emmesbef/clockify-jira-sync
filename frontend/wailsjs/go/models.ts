@@ -1,3 +1,38 @@
+export namespace clockify {
+	
+	export class ProjectInfo {
+	    id: string;
+	    name: string;
+	    clientName: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProjectInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.clientName = source["clientName"];
+	    }
+	}
+	export class WorkspaceInfo {
+	    id: string;
+	    name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new WorkspaceInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	    }
+	}
+
+}
+
 export namespace config {
 	
 	export class Config {
@@ -7,6 +42,8 @@ export namespace config {
 	    JiraEmail: string;
 	    JiraAPIToken: string;
 	    MockMode: boolean;
+	    AutoUpdate: boolean;
+	    BetaChannel: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -20,6 +57,8 @@ export namespace config {
 	        this.JiraEmail = source["JiraEmail"];
 	        this.JiraAPIToken = source["JiraAPIToken"];
 	        this.MockMode = source["MockMode"];
+	        this.AutoUpdate = source["AutoUpdate"];
+	        this.BetaChannel = source["BetaChannel"];
 	    }
 	}
 
@@ -89,6 +128,7 @@ export namespace models {
 	    date: string;
 	    startTime: string;
 	    endTime: string;
+	    projectId: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ManualEntryRequest(source);
@@ -101,6 +141,7 @@ export namespace models {
 	        this.date = source["date"];
 	        this.startTime = source["startTime"];
 	        this.endTime = source["endTime"];
+	        this.projectId = source["projectId"];
 	    }
 	}
 	export class TimeEntry {
@@ -208,6 +249,42 @@ export namespace models {
 	        this.description = source["description"];
 	        this.start = source["start"];
 	        this.end = source["end"];
+	    }
+	}
+	export class UpdateInfo {
+	    version: string;
+	    isPreRelease: boolean;
+	    downloadUrl: string;
+	    releaseNotes: string;
+	    size: number;
+	    publishedAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.isPreRelease = source["isPreRelease"];
+	        this.downloadUrl = source["downloadUrl"];
+	        this.releaseNotes = source["releaseNotes"];
+	        this.size = source["size"];
+	        this.publishedAt = source["publishedAt"];
+	    }
+	}
+	export class UpdatePreferences {
+	    autoCheck: boolean;
+	    betaChannel: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdatePreferences(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.autoCheck = source["autoCheck"];
+	        this.betaChannel = source["betaChannel"];
 	    }
 	}
 

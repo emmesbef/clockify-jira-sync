@@ -14,6 +14,10 @@ export function CheckForUpdates() {
   return window['go']['app']['App']['CheckForUpdates']();
 }
 
+export function CheckStartupUpdate() {
+  return window['go']['app']['App']['CheckStartupUpdate']();
+}
+
 export function DeleteEntry(arg1) {
   return window['go']['app']['App']['DeleteEntry'](arg1);
 }
@@ -46,14 +50,6 @@ export function GetIntegrationStatus() {
   return window['go']['app']['App']['GetIntegrationStatus']();
 }
 
-export function GetUpdatePreferences() {
-  return window['go']['app']['App']['GetUpdatePreferences']();
-}
-
-export function GetVersion() {
-  return window['go']['app']['App']['GetVersion']();
-}
-
 export function GetMyTickets() {
   return window['go']['app']['App']['GetMyTickets']();
 }
@@ -64,6 +60,18 @@ export function GetProjects() {
 
 export function GetTimerStatus() {
   return window['go']['app']['App']['GetTimerStatus']();
+}
+
+export function GetUpdatePreferences() {
+  return window['go']['app']['App']['GetUpdatePreferences']();
+}
+
+export function GetVersion() {
+  return window['go']['app']['App']['GetVersion']();
+}
+
+export function InitTray(arg1, arg2) {
+  return window['go']['app']['App']['InitTray'](arg1, arg2);
 }
 
 export function SaveConfig(arg1) {
