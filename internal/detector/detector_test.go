@@ -204,6 +204,9 @@ func TestStartPerformsInitialScanAndStopsOnCancel(t *testing.T) {
 }
 
 func TestIsProtectedPath(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("isProtectedPath is macOS-specific; skipping on", runtime.GOOS)
+	}
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
