@@ -180,7 +180,12 @@ func (d *Detector) findVSCodeWorkspacesLinux() []ideWorkspace {
 }
 
 func (d *Detector) findVSCodeWorkspacesWindows() []ideWorkspace {
-	out, err := exec.Command("wmic", "process", "where", "name='Code.exe'", "get", "CommandLine").Output()
+	out, err := exec.Command(
+		"powershell",
+		"-NoProfile",
+		"-Command",
+		`Get-CimInstance Win32_Process -Filter "Name = 'Code.exe'" | Select-Object -ExpandProperty CommandLine`,
+	).Output()
 	if err != nil {
 		return nil
 	}
@@ -206,8 +211,11 @@ func (d *Detector) extractPathsFromCmdLine(line string) []string {
 			continue
 		}
 		// Check if it looks like a path and is a git repo
-		if (strings.HasPrefix(part, "/") || strings.HasPrefix(part, "~")) && !isProtectedPath(part) && d.isGitRepo(part) {
-			paths = append(paths, part)
+		if (strings.HasPrefix(part, "/") || strings.HasPrefix(part, "~")) && d.isGitRepo(part) {
+			// On macOS, skip TCC-protected directories; on other OSes, include them.
+			if runtime.GOOS != "darwin" || !isProtectedPath(part) {
+				paths = append(paths, part)
+			}
 		}
 	}
 	return paths
