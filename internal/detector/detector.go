@@ -2,8 +2,9 @@ package detector
 
 import (
 	"context"
-	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -130,110 +131,86 @@ func (d *Detector) findIDEWorkspaces() []ideWorkspace {
 }
 
 func (d *Detector) findVSCodeWorkspacesDarwin() []ideWorkspace {
-	// Use ps to find VS Code processes with their working directories
-	out, err := exec.Command("ps", "aux").Output()
+	// Use ps to find VS Code Electron processes
+	out, err := exec.Command("ps", "-eo", "args").Output()
 	if err != nil {
 		return nil
 	}
 
 	var workspaces []ideWorkspace
-	lines := strings.Split(string(out), "\n")
-	for _, line := range lines {
-		if strings.Contains(line, "Electron") && strings.Contains(line, "Visual Studio Code") {
-			continue // Skip the Electron helper, looking for the folder arg
+	for _, line := range strings.Split(string(out), "\n") {
+		// Only match actual VS Code Electron processes
+		if !strings.Contains(line, "Visual Studio Code") && !strings.Contains(line, "Contents/MacOS/Electron") {
+			continue
 		}
 
-		// VS Code often has --folder-uri or the path as argument
-		if strings.Contains(line, "code") || strings.Contains(line, "Code") {
-			paths := d.extractPathsFromCmdLine(line)
-			for _, p := range paths {
-				workspaces = append(workspaces, ideWorkspace{path: p, ide: "VS Code"})
+		// Extract workspace paths from --folder-uri arguments
+		for _, uri := range extractFolderURIs(line) {
+			if !isProtectedPath(uri) && d.isGitRepo(uri) {
+				workspaces = append(workspaces, ideWorkspace{path: uri, ide: "VS Code"})
 			}
 		}
-	}
-
-	// Also try lsof approach — find open files/dirs by VS Code
-	// Fallback: check recently opened workspaces from VS Code storage
-	recentPaths := d.getVSCodeRecentPaths()
-	for _, p := range recentPaths {
-		workspaces = append(workspaces, ideWorkspace{path: p, ide: "VS Code"})
 	}
 
 	return d.deduplicateWorkspaces(workspaces)
 }
 
+// extractFolderURIs extracts workspace directory paths from VS Code command-line
+// arguments. It handles both --folder-uri=file:///path and bare /path forms.
+// On Windows, file URIs use the form file:///C:/path, so the leading slash
+// before the drive letter is stripped to produce a valid Windows path.
+func extractFolderURIs(line string) []string {
+	var paths []string
+
+	// Match --folder-uri=file:///path (primary mechanism VS Code uses)
+	for _, part := range strings.Fields(line) {
+		const prefix = "--folder-uri=file://"
+		if strings.HasPrefix(part, prefix) {
+			p := strings.TrimPrefix(part, prefix)
+			p = strings.ReplaceAll(p, "%20", " ")
+			// Windows file URIs encode drive-letter paths as /C:/path.
+			// Strip the leading slash so the path is usable on Windows.
+			if len(p) >= 3 && p[0] == '/' && isWindowsDriveLetter(p[1]) && p[2] == ':' {
+				p = p[1:]
+			}
+			if p != "" {
+				paths = append(paths, p)
+			}
+		}
+	}
+
+	return paths
+}
+
+// isWindowsDriveLetter reports whether b is an ASCII letter (A-Z or a-z).
+func isWindowsDriveLetter(b byte) bool {
+	return (b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z')
+}
+
 func (d *Detector) findVSCodeWorkspacesLinux() []ideWorkspace {
-	return d.findVSCodeWorkspacesDarwin() // Same approach on Linux
+	return d.findVSCodeWorkspacesDarwin() // Same ps/args approach on Linux
 }
 
 func (d *Detector) findVSCodeWorkspacesWindows() []ideWorkspace {
-	out, err := exec.Command("tasklist", "/v", "/fi", "IMAGENAME eq Code.exe").Output()
+	out, err := exec.Command(
+		"powershell",
+		"-NoProfile",
+		"-Command",
+		`Get-CimInstance Win32_Process -Filter "Name = 'Code.exe'" | Select-Object -ExpandProperty CommandLine`,
+	).Output()
 	if err != nil {
 		return nil
 	}
 
 	var workspaces []ideWorkspace
-	if strings.Contains(string(out), "Code.exe") {
-		recentPaths := d.getVSCodeRecentPaths()
-		for _, p := range recentPaths {
-			workspaces = append(workspaces, ideWorkspace{path: p, ide: "VS Code"})
-		}
-	}
-	return workspaces
-}
-
-func (d *Detector) getVSCodeRecentPaths() []string {
-	// Try to read VS Code's recent workspaces from storage.json
-	var storagePaths []string
-
-	switch runtime.GOOS {
-	case "darwin":
-		storagePaths = []string{
-			fmt.Sprintf("%s/Library/Application Support/Code/storage.json", homeDir()),
-			fmt.Sprintf("%s/Library/Application Support/Code/User/globalStorage/storage.json", homeDir()),
-		}
-	case "linux":
-		storagePaths = []string{
-			fmt.Sprintf("%s/.config/Code/storage.json", homeDir()),
-		}
-	case "windows":
-		storagePaths = []string{
-			fmt.Sprintf("%s\\AppData\\Roaming\\Code\\storage.json", homeDir()),
-		}
-	}
-
-	var paths []string
-	for _, sp := range storagePaths {
-		extracted := d.parseVSCodeStorage(sp)
-		paths = append(paths, extracted...)
-	}
-	return paths
-}
-
-func (d *Detector) parseVSCodeStorage(path string) []string {
-	// Simplified: just try to find folder paths from VS Code storage
-	// In practice, this reads the JSON and extracts openedPathsList
-	out, err := exec.Command("cat", path).Output()
-	if err != nil {
-		return nil
-	}
-
-	var paths []string
-	content := string(out)
-	// Look for file:// URIs that point to directories
-	parts := strings.Split(content, "file://")
-	for _, part := range parts[1:] { // skip first empty element
-		idx := strings.IndexAny(part, `"',}]`)
-		if idx > 0 {
-			p := part[:idx]
-			// URL-decode basic characters
-			p = strings.ReplaceAll(p, "%20", " ")
-			if d.isGitRepo(p) {
-				paths = append(paths, p)
+	for _, line := range strings.Split(string(out), "\n") {
+		for _, uri := range extractFolderURIs(line) {
+			if d.isGitRepo(uri) {
+				workspaces = append(workspaces, ideWorkspace{path: uri, ide: "VS Code"})
 			}
 		}
 	}
-	return paths
+	return workspaces
 }
 
 func (d *Detector) extractPathsFromCmdLine(line string) []string {
@@ -247,7 +224,10 @@ func (d *Detector) extractPathsFromCmdLine(line string) []string {
 		}
 		// Check if it looks like a path and is a git repo
 		if (strings.HasPrefix(part, "/") || strings.HasPrefix(part, "~")) && d.isGitRepo(part) {
-			paths = append(paths, part)
+			// On macOS, skip TCC-protected directories; on other OSes, include them.
+			if runtime.GOOS != "darwin" || !isProtectedPath(part) {
+				paths = append(paths, part)
+			}
 		}
 	}
 	return paths
@@ -283,7 +263,45 @@ func (d *Detector) deduplicateWorkspaces(workspaces []ideWorkspace) []ideWorkspa
 	return result
 }
 
+// isProtectedPath returns true if the path is inside a macOS TCC-protected
+// directory or any other directory that the app should not access.
+// Uses a blocklist of known protected directories AND requires paths under ~/
+// to NOT be in the home root (e.g. ~/someproject is blocked, only explicit
+// well-known dev paths or paths outside ~ are allowed).
+func isProtectedPath(path string) bool {
+	home := homeDir()
+	if home == "" {
+		return false
+	}
+
+	// Block ALL known TCC-protected directories
+	protected := []string{
+		filepath.Join(home, "Documents"),
+		filepath.Join(home, "Desktop"),
+		filepath.Join(home, "Downloads"),
+		filepath.Join(home, "Library"),
+		filepath.Join(home, "Movies"),
+		filepath.Join(home, "Music"),
+		filepath.Join(home, "Pictures"),
+	}
+	for _, dir := range protected {
+		if strings.HasPrefix(path, dir+"/") || path == dir {
+			return true
+		}
+	}
+
+	// Block any /Volumes/ path (external drives, iDrive, cloud mounts)
+	if strings.HasPrefix(path, "/Volumes/") {
+		return true
+	}
+
+	return false
+}
+
 func homeDir() string {
-	home, _ := exec.Command("sh", "-c", "echo $HOME").Output()
-	return strings.TrimSpace(string(home))
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return home
 }

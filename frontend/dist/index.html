@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
   <script type="module" crossorigin src="/assets/index.f189de4c.js"></script>
-  <link rel="stylesheet" href="/assets/index.28aec5f4.css">
+  <link rel="stylesheet" href="/assets/index.d47d4071.css">
 </head>
 
 <body>
@@ -55,16 +55,16 @@
                     <div id="manual-display-container" class="hidden" style="margin-bottom: 12px; text-align: left;">
                         <div class="form-group" style="margin-bottom: 8px;">
                             <label class="form-label">Date</label>
-                            <input type="date" id="manual-date" class="input input-dark input-sm" required />
+                            <input type="date" id="manual-date" class="input input-sm" required />
                         </div>
                         <div class="row-between">
                             <div class="form-group" style="width: 48%;">
                                 <label class="form-label">Start Time</label>
-                                <input type="time" id="manual-start" class="input input-dark input-sm" required />
+                                <input type="time" id="manual-start" class="input input-sm" required />
                             </div>
                             <div class="form-group" style="width: 48%;">
                                 <label class="form-label">End Time</label>
-                                <input type="time" id="manual-end" class="input input-dark input-sm" required />
+                                <input type="time" id="manual-end" class="input input-sm" required />
                             </div>
                         </div>
                     </div>
@@ -84,7 +84,7 @@
                     <div class="form-group">
                         <label class="form-label">Description</label>
                         <div class="search-container">
-                            <input type="text" id="ticket-search" class="input input-dark"
+                            <input type="text" id="ticket-search" class="input"
                                 placeholder="Search tickets or type a description..." autocomplete="off" />
                             <button id="clear-ticket-btn" class="clear-btn hidden" title="Clear ticket">✕</button>
                             <div id="search-results" class="dropdown hidden"></div>
@@ -93,7 +93,7 @@
 
                     <div class="form-group margin-top-auto">
                         <label class="form-label">Project</label>
-                        <select class="input input-dark select-input" id="project-select">
+                        <select class="input select-input" id="project-select">
                             <option value="">— No project —</option>
                         </select>
                     </div>
@@ -113,9 +113,9 @@
             <!-- History View -->
             <div id="history-view" class="main-view hidden" style="display: none;">
                 <div class="history-controls">
-                    <input type="date" id="history-start" class="input input-dark input-xs" />
+                    <input type="date" id="history-start" class="input input-xs" />
                     <span class="muted-text">→</span>
-                    <input type="date" id="history-end" class="input input-dark input-xs" />
+                    <input type="date" id="history-end" class="input input-xs" />
                     <button id="history-fetch-btn" class="icon-btn" title="Refresh">🔄</button>
                 </div>
                 <div class="separator-line" style="margin: 12px 0;"></div>
@@ -131,7 +131,7 @@
                 <div class="form-section" style="gap: 16px;">
                     <div class="form-group" style="gap: 6px;">
                         <label class="form-label">Theme Appearance</label>
-                        <select id="theme-select" class="input input-dark input-sm" style="width: fit-content; min-width: 160px;">
+                        <select id="theme-select" class="input input-sm" style="width: fit-content; min-width: 160px;">
                             <option value="auto">🖥 Automatic (System)</option>
                             <option value="light">☀️ Light</option>
                             <option value="dark">🌙 Dark</option>
@@ -145,32 +145,32 @@
 
                         <div class="form-group" style="gap: 4px;">
                             <label class="muted-text" style="font-size: 11px;">Clockify API Key</label>
-                            <input type="password" id="setting-clockify-key" class="input input-dark input-sm"
+                            <input type="password" id="setting-clockify-key" class="input input-sm"
                                 placeholder="e.g. XYZA123..." />
                         </div>
 
                         <div class="form-group" style="gap: 4px;">
                             <label class="muted-text" style="font-size: 11px;">Clockify Workspace</label>
-                            <select id="setting-clockify-ws" class="input input-dark input-sm">
+                            <select id="setting-clockify-ws" class="input input-sm">
                                 <option value="">— enter API key to load —</option>
                             </select>
                         </div>
 
                         <div class="form-group" style="gap: 4px; margin-top: 8px;">
                             <label class="muted-text" style="font-size: 11px;">Jira Base URL</label>
-                            <input type="text" id="setting-jira-url" class="input input-dark input-sm"
+                            <input type="text" id="setting-jira-url" class="input input-sm"
                                 placeholder="https://your-domain.atlassian.net" />
                         </div>
 
                         <div class="form-group" style="gap: 4px;">
                             <label class="muted-text" style="font-size: 11px;">Jira Email</label>
-                            <input type="email" id="setting-jira-email" class="input input-dark input-sm"
+                            <input type="email" id="setting-jira-email" class="input input-sm"
                                 placeholder="user@example.com" />
                         </div>
 
                         <div class="form-group" style="gap: 4px;">
                             <label class="muted-text" style="font-size: 11px;">Jira API Token</label>
-                            <input type="password" id="setting-jira-token" class="input input-dark input-sm"
+                            <input type="password" id="setting-jira-token" class="input input-sm"
                                 placeholder="Atlassian Personal Access Token" />
                         </div>
 
