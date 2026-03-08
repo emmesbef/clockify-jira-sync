@@ -4,6 +4,7 @@
 // Go callback declarations (defined in tray_darwin.go via //export)
 extern void goTrayShow(void);
 extern void goTrayQuit(void);
+extern void goTrayCheckUpdates(void);
 
 static NSStatusItem *statusItem = nil;
 static NSMenuItem *showHideItem = nil;
@@ -12,6 +13,7 @@ static BOOL windowVisible = YES;
 @interface TrayDelegate : NSObject
 - (void)showWindow:(id)sender;
 - (void)showAbout:(id)sender;
+- (void)checkUpdates:(id)sender;
 - (void)quitApp:(id)sender;
 @end
 
@@ -31,6 +33,10 @@ static NSString *appVersion = nil;
     [alert setAlertStyle:NSAlertStyleInformational];
     [alert addButtonWithTitle:@"OK"];
     [alert runModal];
+}
+
+- (void)checkUpdates:(id)sender {
+    goTrayCheckUpdates();
 }
 
 - (void)quitApp:(id)sender {
@@ -88,6 +94,12 @@ void initTray(const char *version, const void *iconData, int iconLen) {
                                                     keyEquivalent:@""];
         [aboutItem setTarget:trayDelegate];
         [menu addItem:aboutItem];
+
+        NSMenuItem *updateItem = [[NSMenuItem alloc] initWithTitle:@"Check for Updates\u2026"
+                                                            action:@selector(checkUpdates:)
+                                                     keyEquivalent:@""];
+        [updateItem setTarget:trayDelegate];
+        [menu addItem:updateItem];
 
         [menu addItem:[NSMenuItem separatorItem]];
 

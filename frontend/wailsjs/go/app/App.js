@@ -6,6 +6,14 @@ export function AddManualEntry(arg1) {
   return window['go']['app']['App']['AddManualEntry'](arg1);
 }
 
+export function ApplyUpdate(arg1) {
+  return window['go']['app']['App']['ApplyUpdate'](arg1);
+}
+
+export function CheckForUpdates() {
+  return window['go']['app']['App']['CheckForUpdates']();
+}
+
 export function DeleteEntry(arg1) {
   return window['go']['app']['App']['DeleteEntry'](arg1);
 }
@@ -38,6 +46,10 @@ export function GetIntegrationStatus() {
   return window['go']['app']['App']['GetIntegrationStatus']();
 }
 
+export function GetUpdatePreferences() {
+  return window['go']['app']['App']['GetUpdatePreferences']();
+}
+
 export function GetVersion() {
   return window['go']['app']['App']['GetVersion']();
 }
@@ -64,6 +76,10 @@ export function SearchTickets(arg1) {
 
 export function SetMockMode(arg1) {
   return window['go']['app']['App']['SetMockMode'](arg1);
+}
+
+export function SetUpdatePreferences(arg1) {
+  return window['go']['app']['App']['SetUpdatePreferences'](arg1);
 }
 
 export function StartTimer(arg1, arg2, arg3) {

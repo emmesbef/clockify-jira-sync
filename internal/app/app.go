@@ -16,6 +16,7 @@ import (
 	"clockify-jira-sync/internal/jira"
 	"clockify-jira-sync/internal/models"
 	"clockify-jira-sync/internal/tray"
+	"clockify-jira-sync/internal/updater"
 )
 
 // App is the main application struct exposed to the Wails frontend
@@ -26,6 +27,7 @@ type App struct {
 	clockify *clockify.Client
 	jira     *jira.Client
 	detector *detector.Detector
+	updater  *updater.Updater
 
 	mu            sync.RWMutex
 	timer         models.TimerState
@@ -42,6 +44,7 @@ func NewApp(cfg *config.Config, version string) *App {
 		clockify:      clockify.NewClient(cfg.ClockifyAPIKey, cfg.ClockifyWorkspace),
 		jira:          jira.NewClient(cfg.JiraBaseURL, cfg.JiraEmail, cfg.JiraAPIToken),
 		detector:      detector.NewDetector(15 * time.Second),
+		updater:       updater.New(),
 		entries:       make([]models.TimeEntry, 0),
 		windowVisible: true,
 	}
@@ -77,6 +80,18 @@ func (a *App) InitTray(version string, icon []byte) {
 		if a.ctx != nil {
 			wailsRuntime.Quit(a.ctx)
 		}
+	}, func() {
+		// Check for updates from tray
+		go func() {
+			info, err := a.CheckForUpdates()
+			if err != nil {
+				log.Printf("Update check failed: %v", err)
+				return
+			}
+			if info != nil && a.ctx != nil {
+				wailsRuntime.EventsEmit(a.ctx, "update-available", info)
+			}
+		}()
 	})
 }
 
@@ -94,6 +109,8 @@ func (a *App) SaveConfig(newCfg config.Config) error {
 	a.cfg.JiraBaseURL = newCfg.JiraBaseURL
 	a.cfg.JiraEmail = newCfg.JiraEmail
 	a.cfg.JiraAPIToken = newCfg.JiraAPIToken
+	a.cfg.AutoUpdate = newCfg.AutoUpdate
+	a.cfg.BetaChannel = newCfg.BetaChannel
 
 	err := config.Save(a.cfg)
 	if err != nil {
@@ -180,6 +197,9 @@ func (a *App) Startup(ctx context.Context) {
 
 	// Start the IDE detector in background
 	go a.detector.Start(ctx)
+
+	// Check for updates on startup
+	go a.CheckStartupUpdate()
 }
 
 // Shutdown is called when the app is closing
@@ -559,4 +579,62 @@ func (a *App) DeleteEntry(id string) error {
 // GetDetectedBranches returns currently detected IDE branches with Jira tickets
 func (a *App) GetDetectedBranches() []models.BranchDetection {
 	return a.detector.GetDetections()
+}
+
+// --- Update Methods ---
+
+// CheckForUpdates checks GitHub releases for a newer version.
+// Returns nil if already up-to-date.
+func (a *App) CheckForUpdates() (*models.UpdateInfo, error) {
+	return a.updater.CheckForUpdate(a.version, a.cfg.BetaChannel)
+}
+
+// ApplyUpdate downloads and applies the given update.
+func (a *App) ApplyUpdate(info models.UpdateInfo) error {
+	return a.updater.DownloadAndApply(&info)
+}
+
+// GetUpdatePreferences returns the current update settings.
+func (a *App) GetUpdatePreferences() models.UpdatePreferences {
+	return models.UpdatePreferences{
+		AutoCheck:   a.cfg.AutoUpdate,
+		BetaChannel: a.cfg.BetaChannel,
+	}
+}
+
+// SetUpdatePreferences saves new update settings.
+func (a *App) SetUpdatePreferences(prefs models.UpdatePreferences) error {
+	a.cfg.AutoUpdate = prefs.AutoCheck
+	a.cfg.BetaChannel = prefs.BetaChannel
+	return a.cfg.Save()
+}
+
+// CheckStartupUpdate runs the auto-update check on startup.
+// If the current version is a pre-release and beta is disabled, it forces an update.
+func (a *App) CheckStartupUpdate() {
+	// Beta guard: if running a pre-release with beta disabled, force stable update
+	if updater.IsPreReleaseVersion(a.version) && !a.cfg.BetaChannel {
+		info, err := a.updater.GetLatestStable(a.version)
+		if err != nil {
+			log.Printf("Startup update check failed: %v", err)
+			return
+		}
+		if info != nil && a.ctx != nil {
+			wailsRuntime.EventsEmit(a.ctx, "update-forced", info)
+		}
+		return
+	}
+
+	if !a.cfg.AutoUpdate {
+		return
+	}
+
+	info, err := a.updater.CheckForUpdate(a.version, a.cfg.BetaChannel)
+	if err != nil {
+		log.Printf("Startup update check failed: %v", err)
+		return
+	}
+	if info != nil && a.ctx != nil {
+		wailsRuntime.EventsEmit(a.ctx, "update-available", info)
+	}
 }

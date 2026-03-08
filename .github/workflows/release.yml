@@ -7,12 +7,22 @@ on:
         description: Version tag to build and publish assets for
         required: true
         type: string
+      prerelease:
+        description: Mark this release as a pre-release (beta)
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       tag_name:
-        description: "Version tag (e.g. v1.2.3)"
+        description: "Version tag (e.g. v1.2.3 or v2.0.0-beta.1)"
         required: true
         type: string
+      prerelease:
+        description: "Pre-release (beta)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -176,12 +186,16 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           TAG="${{ inputs.tag_name }}"
+          RELEASE_FLAG="--latest"
+          if [ "${{ inputs.prerelease }}" = "true" ]; then
+            RELEASE_FLAG="--prerelease"
+          fi
           if [ "$HAVE_NOTES" = "true" ]; then
             gh release create "$TAG" assets/*.zip assets/*SHA256SUMS.txt \
-              --title "$TAG" --notes-file /tmp/release-notes.md --latest
+              --title "$TAG" --notes-file /tmp/release-notes.md $RELEASE_FLAG
           else
             gh release create "$TAG" assets/*.zip assets/*SHA256SUMS.txt \
-              --title "$TAG" --generate-notes --latest
+              --title "$TAG" --generate-notes $RELEASE_FLAG
           fi
 
   update-homebrew:
@@ -189,6 +203,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [publish]
+    if: ${{ inputs.prerelease != true }}
     steps:
       - name: Download macOS artifact
         uses: actions/download-artifact@v4

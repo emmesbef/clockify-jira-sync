@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
   <script type="module" crossorigin src="/assets/index.f189de4c.js"></script>
-  <link rel="stylesheet" href="/assets/index.f6d19683.css">
+  <link rel="stylesheet" href="/assets/index.28aec5f4.css">
 </head>
 
 <body>
@@ -192,6 +192,36 @@
                             <span class="ticket-status" id="status-jira"
                                 style="background: rgba(156, 163, 175, 0.2); color: var(--text-secondary); padding: 2px 8px; border-radius: 12px;">Checking...</span>
                         </div>
+                    </div>
+
+                    <div class="separator-line" style="margin: 8px 0;"></div>
+
+                    <!-- Updates Section -->
+                    <div class="form-group" style="gap: 10px;">
+                        <label class="form-label" style="font-weight: 600; margin-bottom: 4px;">Updates</label>
+
+                        <div id="update-banner" class="hidden" style="background: var(--accent-light, rgba(59,130,246,0.1)); border: 1px solid var(--accent, #3b82f6); border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                            <span id="update-banner-text" style="font-size: 13px;"></span>
+                            <button id="apply-update-btn" type="button" class="btn btn-primary" style="font-size: 12px; padding: 4px 12px; white-space: nowrap;">Update Now</button>
+                        </div>
+
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <span style="font-size: 13px;">Check for updates automatically</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="setting-auto-update" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <span style="font-size: 13px;">Include beta versions</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="setting-beta-channel">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <button id="check-update-btn" type="button" class="btn btn-secondary" style="width: 100%; margin-top: 4px;">🔄 Check for Updates</button>
                     </div>
 
                     <div class="separator-line" style="margin: 8px 0;"></div>

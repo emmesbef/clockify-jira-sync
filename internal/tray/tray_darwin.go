@@ -13,17 +13,20 @@ import "C"
 import "unsafe"
 
 var (
-	onShow func()
-	onQuit func()
+	onShow         func()
+	onQuit         func()
+	onCheckUpdates func()
 )
 
 // Init creates the macOS status bar icon and context menu.
 // It must be called after the main run loop has started (e.g., from Wails OnStartup).
 // onShowFn is called when "Show/Hide Window" is clicked.
 // onQuitFn is called when "Quit" is clicked.
-func Init(version string, icon []byte, onShowFn func(), onQuitFn func()) {
+// onCheckUpdatesFn is called when "Check for Updates…" is clicked.
+func Init(version string, icon []byte, onShowFn func(), onQuitFn func(), onCheckUpdatesFn func()) {
 	onShow = onShowFn
 	onQuit = onQuitFn
+	onCheckUpdates = onCheckUpdatesFn
 
 	cVersion := C.CString(version)
 	defer C.free(unsafe.Pointer(cVersion))
@@ -58,5 +61,12 @@ func goTrayShow() {
 func goTrayQuit() {
 	if onQuit != nil {
 		onQuit()
+	}
+}
+
+//export goTrayCheckUpdates
+func goTrayCheckUpdates() {
+	if onCheckUpdates != nil {
+		onCheckUpdates()
 	}
 }

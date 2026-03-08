@@ -46,6 +46,8 @@ type Config struct {
 	JiraEmail         string
 	JiraAPIToken      string
 	MockMode          bool
+	AutoUpdate        bool
+	BetaChannel       bool
 }
 
 func Load() (*Config, error) {
@@ -62,6 +64,8 @@ func Load() (*Config, error) {
 		JiraEmail:         os.Getenv("JIRA_EMAIL"),
 		JiraAPIToken:      os.Getenv("JIRA_API_TOKEN"),
 		MockMode:          os.Getenv("MOCK_DATA") == "true",
+		AutoUpdate:        os.Getenv("AUTO_UPDATE") != "false",
+		BetaChannel:       os.Getenv("BETA_CHANNEL") == "true",
 	}
 
 	if cfg.MockMode {
@@ -120,6 +124,20 @@ func Save(cfg *Config) error {
 	envMap["JIRA_BASE_URL"] = cfg.JiraBaseURL
 	envMap["JIRA_EMAIL"] = cfg.JiraEmail
 	envMap["JIRA_API_TOKEN"] = cfg.JiraAPIToken
+	envMap["AUTO_UPDATE"] = boolToStr(cfg.AutoUpdate)
+	envMap["BETA_CHANNEL"] = boolToStr(cfg.BetaChannel)
 
 	return godotenv.Write(envMap, p)
+}
+
+// Save is a convenience method that delegates to the package-level Save function.
+func (c *Config) Save() error {
+	return Save(c)
+}
+
+func boolToStr(b bool) string {
+	if b {
+		return "true"
+	}
+	return "false"
 }

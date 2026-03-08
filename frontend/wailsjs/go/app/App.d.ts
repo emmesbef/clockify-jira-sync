@@ -5,9 +5,17 @@ import {config} from '../models';
 
 export function AddManualEntry(arg1:models.ManualEntryRequest):Promise<models.TimeEntry>;
 
+export function ApplyUpdate(arg1:models.UpdateInfo):Promise<void>;
+
+export function CheckForUpdates():Promise<models.UpdateInfo|null>;
+
 export function DeleteEntry(arg1:string):Promise<void>;
 
+export function FetchWorkspaces(arg1:string):Promise<Array<any>>;
+
 export function GetConfig():Promise<config.Config>;
+
+export function GetConfigPath():Promise<string>;
 
 export function GetDetectedBranches():Promise<Array<models.BranchDetection>>;
 
@@ -16,6 +24,10 @@ export function GetHistory():Promise<Array<models.TimeEntry>>;
 export function GetHistoryFromClockify(arg1:string,arg2:string):Promise<Array<models.TimeEntry>>;
 
 export function GetIntegrationStatus():Promise<models.IntegrationStatus>;
+
+export function GetUpdatePreferences():Promise<models.UpdatePreferences>;
+
+export function GetVersion():Promise<string>;
 
 export function GetMyTickets():Promise<Array<models.JiraTicket>>;
 
@@ -28,6 +40,8 @@ export function SaveConfig(arg1:config.Config):Promise<void>;
 export function SearchTickets(arg1:string):Promise<Array<models.JiraTicket>>;
 
 export function SetMockMode(arg1:string):Promise<void>;
+
+export function SetUpdatePreferences(arg1:models.UpdatePreferences):Promise<void>;
 
 export function StartTimer(arg1:string,arg2:string,arg3:string):Promise<models.TimerState>;
 

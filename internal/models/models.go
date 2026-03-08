@@ -67,3 +67,19 @@ type UpdateEntryRequest struct {
 	Start       string `json:"start"` // ISO 8601
 	End         string `json:"end"`   // ISO 8601
 }
+
+// UpdateInfo describes an available update from GitHub Releases
+type UpdateInfo struct {
+	Version      string `json:"version"`
+	IsPreRelease bool   `json:"isPreRelease"`
+	DownloadURL  string `json:"downloadUrl"`
+	ReleaseNotes string `json:"releaseNotes"`
+	Size         int64  `json:"size"`
+	PublishedAt  string `json:"publishedAt"`
+}
+
+// UpdatePreferences holds user preferences for the auto-update system
+type UpdatePreferences struct {
+	AutoCheck   bool `json:"autoCheck"`
+	BetaChannel bool `json:"betaChannel"`
+}
