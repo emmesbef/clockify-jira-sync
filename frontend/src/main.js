@@ -739,6 +739,96 @@ async function fetchAndPopulateWorkspaces(apiKey, selectedId) {
     }
 }
 
+// Holds the latest update info so "Update Now" can use it
+let pendingUpdateInfo = null;
+
+function showUpdateBanner(info, forced = false) {
+    pendingUpdateInfo = info;
+    const banner = document.getElementById('update-banner');
+    const text = document.getElementById('update-banner-text');
+    const btn = document.getElementById('apply-update-btn');
+    if (!banner || !text) return;
+
+    const prefix = forced ? '⚠️ Stable update required' : '🆕 Update available';
+    text.textContent = `${prefix}: v${info.Version}`;
+    btn.textContent = 'Update Now';
+    btn.disabled = false;
+    banner.classList.remove('hidden');
+}
+
+function hideUpdateBanner() {
+    pendingUpdateInfo = null;
+    const banner = document.getElementById('update-banner');
+    if (banner) banner.classList.add('hidden');
+}
+
+async function checkForUpdates() {
+    const btn = document.getElementById('check-update-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Checking…'; }
+
+    try {
+        if (!App.CheckForUpdates) return;
+        const info = await App.CheckForUpdates();
+        if (info && info.Version) {
+            showUpdateBanner(info, false);
+        } else {
+            hideUpdateBanner();
+            showToast('You are up to date', 'success');
+        }
+    } catch (err) {
+        console.error('Update check failed:', err);
+        showToast('Update check failed: ' + (err?.message || err), 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🔄 Check for Updates'; }
+    }
+}
+
+async function applyUpdate() {
+    if (!pendingUpdateInfo || !App.ApplyUpdate) return;
+    const btn = document.getElementById('apply-update-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Downloading…'; }
+
+    try {
+        await App.ApplyUpdate(pendingUpdateInfo);
+        showToast('Update applied — please restart the app', 'success');
+        const text = document.getElementById('update-banner-text');
+        if (text) text.textContent = '✅ Update installed — restart to use v' + pendingUpdateInfo.Version;
+        if (btn) { btn.textContent = 'Restart'; btn.disabled = false; }
+    } catch (err) {
+        console.error('Apply update failed:', err);
+        showToast('Update failed: ' + (err?.message || err), 'error');
+        if (btn) { btn.textContent = 'Update Now'; btn.disabled = false; }
+    }
+}
+
+async function loadUpdatePreferences() {
+    if (!App.GetUpdatePreferences) return;
+    try {
+        const prefs = await App.GetUpdatePreferences();
+        const autoEl = document.getElementById('setting-auto-update');
+        const betaEl = document.getElementById('setting-beta-channel');
+        if (autoEl) autoEl.checked = prefs.AutoCheck !== false;
+        if (betaEl) betaEl.checked = !!prefs.BetaChannel;
+    } catch (err) {
+        console.error('Failed to load update prefs:', err);
+    }
+}
+
+async function saveUpdatePreferences() {
+    if (!App.SetUpdatePreferences) return;
+    const autoEl = document.getElementById('setting-auto-update');
+    const betaEl = document.getElementById('setting-beta-channel');
+    try {
+        await App.SetUpdatePreferences({
+            AutoCheck: autoEl?.checked ?? true,
+            BetaChannel: betaEl?.checked ?? false,
+        });
+    } catch (err) {
+        console.error('Failed to save update prefs:', err);
+        showToast('Failed to save update preferences', 'error');
+    }
+}
+
 function initSettings() {
     // Display app version
     if (App.GetVersion) {
@@ -810,6 +900,39 @@ function initSettings() {
             await refreshIntegrationStatus();
         }
     });
+
+    // --- Update UI wiring ---
+    loadUpdatePreferences();
+
+    // Toggle handlers — save preferences on change
+    document.getElementById('setting-auto-update')?.addEventListener('change', saveUpdatePreferences);
+    document.getElementById('setting-beta-channel')?.addEventListener('change', saveUpdatePreferences);
+
+    // Manual check button
+    document.getElementById('check-update-btn')?.addEventListener('click', checkForUpdates);
+
+    // Apply update button
+    document.getElementById('apply-update-btn')?.addEventListener('click', applyUpdate);
+
+    // Listen for backend events (backup path — startup goroutine or tray trigger)
+    if (wailsRuntime?.EventsOn) {
+        wailsRuntime.EventsOn('update-available', (info) => {
+            if (info && info.Version) showUpdateBanner(info, false);
+        });
+        wailsRuntime.EventsOn('update-forced', (info) => {
+            if (info && info.Version) showUpdateBanner(info, true);
+        });
+    }
+
+    // Proactive check: the backend startup goroutine may fire before we register
+    // listeners, so we do our own check here as the primary detection path.
+    if (App.CheckForUpdates) {
+        App.CheckForUpdates().then(info => {
+            if (info && info.Version) showUpdateBanner(info, false);
+        }).catch(err => {
+            console.error('Startup update check failed:', err);
+        });
+    }
 }
 
 function setIntegrationBadge(elementId, state, message = '') {

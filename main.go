@@ -63,6 +63,7 @@ func main() {
 			Assets: assets,
 		},
 		OnStartup:  application.Startup,
+		OnDomReady: application.DomReady,
 		OnShutdown: application.Shutdown,
 		Bind: []interface{}{
 			application,

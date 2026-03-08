@@ -197,8 +197,11 @@ func (a *App) Startup(ctx context.Context) {
 
 	// Start the IDE detector in background
 	go a.detector.Start(ctx)
+}
 
-	// Check for updates on startup
+// DomReady is called after the frontend DOM is loaded.
+func (a *App) DomReady(ctx context.Context) {
+	// Check for updates now that the frontend can receive events
 	go a.CheckStartupUpdate()
 }
 
