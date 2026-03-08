@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.10.1](https://github.com/emmesbef/clockify-jira-sync/compare/v1.10.0...v1.10.1) (2026-03-08)
+
+
+### Bug Fixes
+
+* handle Windows drive-letter paths in extractFolderURIs ([db4bbb8](https://github.com/emmesbef/clockify-jira-sync/commit/db4bbb88594bb89481fe05588f2f3cef8faea258))
+* light mode and folder access ([73415e9](https://github.com/emmesbef/clockify-jira-sync/commit/73415e9bf52826487e15e24c34efcb2427bf13fe))
+* light mode readability for input fields ([f647512](https://github.com/emmesbef/clockify-jira-sync/commit/f647512060718ba258768f81654917ddecbcda46))
+* remove VS Code storage.json reading and add protected path filter ([faa33d8](https://github.com/emmesbef/clockify-jira-sync/commit/faa33d8231326570229938dd484746b7007b7152))
+
 ## [1.10.0](https://github.com/emmesbef/clockify-jira-sync/compare/v1.9.0...v1.10.0) (2026-03-08)
 
 
