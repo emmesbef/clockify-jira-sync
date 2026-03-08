@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.10.2](https://github.com/emmesbef/clockify-jira-sync/compare/v1.10.1...v1.10.2) (2026-03-08)
+
+
+### Bug Fixes
+
+* wire up frontend update UI and fix startup race condition ([a8bc13d](https://github.com/emmesbef/clockify-jira-sync/commit/a8bc13d07c8ee3aaa648703135bb5b0f23cd6860))
+* wire up frontend update UI and fix startup race condition ([2d3dfc7](https://github.com/emmesbef/clockify-jira-sync/commit/2d3dfc73ca35913afc8c4715308dc9b59cfb3451))
+
 ## [1.10.1](https://github.com/emmesbef/clockify-jira-sync/compare/v1.10.0...v1.10.1) (2026-03-08)
 
 
