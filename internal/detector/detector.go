@@ -157,6 +157,8 @@ func (d *Detector) findVSCodeWorkspacesDarwin() []ideWorkspace {
 
 // extractFolderURIs extracts workspace directory paths from VS Code command-line
 // arguments. It handles both --folder-uri=file:///path and bare /path forms.
+// On Windows, file URIs use the form file:///C:/path, so the leading slash
+// before the drive letter is stripped to produce a valid Windows path.
 func extractFolderURIs(line string) []string {
 	var paths []string
 
@@ -166,6 +168,11 @@ func extractFolderURIs(line string) []string {
 		if strings.HasPrefix(part, prefix) {
 			p := strings.TrimPrefix(part, prefix)
 			p = strings.ReplaceAll(p, "%20", " ")
+			// Windows file URIs encode drive-letter paths as /C:/path.
+			// Strip the leading slash so the path is usable on Windows.
+			if len(p) >= 3 && p[0] == '/' && isWindowsDriveLetter(p[1]) && p[2] == ':' {
+				p = p[1:]
+			}
 			if p != "" {
 				paths = append(paths, p)
 			}
@@ -173,6 +180,11 @@ func extractFolderURIs(line string) []string {
 	}
 
 	return paths
+}
+
+// isWindowsDriveLetter reports whether b is an ASCII letter (A-Z or a-z).
+func isWindowsDriveLetter(b byte) bool {
+	return (b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z')
 }
 
 func (d *Detector) findVSCodeWorkspacesLinux() []ideWorkspace {

@@ -262,6 +262,16 @@ func TestExtractFolderURIs(t *testing.T) {
 			[]string{"/repo/a", "/repo/b"},
 		},
 		{
+			"Windows drive-letter path",
+			`Electron --folder-uri=file:///C:/Users/dev/project`,
+			[]string{`C:/Users/dev/project`},
+		},
+		{
+			"Windows path with space encoded",
+			`Electron --folder-uri=file:///C:/Users/dev/my%20project`,
+			[]string{`C:/Users/dev/my project`},
+		},
+		{
 			"No folder-uri",
 			"Electron --reuse-window /some/path",
 			nil,
