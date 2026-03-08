@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/emmesbef/clockify-jira-sync/compare/v1.9.0...v1.10.0) (2026-03-08)
+
+
+### Features
+
+* auto-update system with beta channel support ([4e473fb](https://github.com/emmesbef/clockify-jira-sync/commit/4e473fbafadc8af5661d60eb3086942978c6cbe7))
+
 ## [1.9.0](https://github.com/emmesbef/clockify-jira-sync/compare/v1.8.7...v1.9.0) (2026-03-07)
 
 
