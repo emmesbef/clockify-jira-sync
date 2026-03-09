@@ -849,7 +849,7 @@ function initSettings() {
 
     // Populate form if backend supports getting config
     if (App.GetConfig) {
-        App.GetConfig().then(cfg => {
+        App.GetConfig().then(async (cfg) => {
             if (cfg) {
                 document.getElementById('setting-clockify-key').value = cfg.ClockifyAPIKey || '';
                 document.getElementById('setting-jira-url').value = cfg.JiraBaseURL || '';
@@ -864,8 +864,17 @@ function initSettings() {
                     ws.innerHTML = '<option value="">— enter API key to load —</option>';
                 }
             }
+
+            // Show config load feedback
+            const cfgPath = App.GetConfigPath ? await App.GetConfigPath().catch(() => '') : '';
+            if (cfg && cfg.ClockifyAPIKey) {
+                showToast(`Config loaded from ${cfgPath || 'environment'}`, 'success');
+            } else {
+                showToast(`No config file found at ${cfgPath || '(unknown)'} — enter credentials in Settings`, 'error');
+            }
         }).catch(err => {
             console.error("Could not load config:", err);
+            showToast('Failed to load config — enter credentials in Settings', 'error');
         }).finally(() => {
             refreshIntegrationStatus();
         });
