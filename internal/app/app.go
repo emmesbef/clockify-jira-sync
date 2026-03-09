@@ -626,7 +626,11 @@ type ConfigPersistenceResult struct {
 // creates it from the current in-memory credentials. Returns whether a new
 // file was created and the path. Existing files are never overwritten.
 func (a *App) EnsureConfigPersisted() ConfigPersistenceResult {
-	p, _ := config.FilePath()
+	p, err := config.FilePath()
+	if err != nil {
+		log.Printf("Config path resolution failed: %v", err)
+		return ConfigPersistenceResult{Created: false, Path: ""}
+	}
 	created, err := config.EnsurePersisted(a.cfg)
 	if err != nil {
 		log.Printf("Config persistence failed: %v", err)
