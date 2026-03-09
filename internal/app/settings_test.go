@@ -1,6 +1,7 @@
 package app
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -50,6 +51,59 @@ func TestSaveConfigPersistsWorkspace(t *testing.T) {
 
 	if envMap["CLOCKIFY_WORKSPACE_ID"] != "new-workspace" {
 		t.Fatalf("expected CLOCKIFY_WORKSPACE_ID to be persisted, got %q", envMap["CLOCKIFY_WORKSPACE_ID"])
+	}
+}
+
+func TestEnsureConfigPersistedCreatesNewFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	config.SetConfigDir(tmpDir)
+	defer config.SetConfigDir("")
+
+	a := NewApp(&config.Config{
+		ClockifyAPIKey:    "test-key",
+		ClockifyWorkspace: "test-workspace",
+		JiraBaseURL:       "https://example.atlassian.net",
+		JiraEmail:         "test@example.com",
+		JiraAPIToken:      "test-token",
+	}, "test")
+
+	result := a.EnsureConfigPersisted()
+
+	if !result.Created {
+		t.Fatalf("expected Created to be true when no config file exists")
+	}
+	expectedPath := filepath.Join(tmpDir, ".env")
+	if result.Path != expectedPath {
+		t.Fatalf("expected Path to be %q, got %q", expectedPath, result.Path)
+	}
+}
+
+func TestEnsureConfigPersistedExistingFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	config.SetConfigDir(tmpDir)
+	defer config.SetConfigDir("")
+
+	envPath := filepath.Join(tmpDir, ".env")
+	if err := os.WriteFile(envPath, []byte("CLOCKIFY_API_KEY=existing-key\n"), 0o600); err != nil {
+		t.Fatalf("failed to create pre-existing config file: %v", err)
+	}
+
+	a := NewApp(&config.Config{
+		ClockifyAPIKey:    "test-key",
+		ClockifyWorkspace: "test-workspace",
+		JiraBaseURL:       "https://example.atlassian.net",
+		JiraEmail:         "test@example.com",
+		JiraAPIToken:      "test-token",
+	}, "test")
+
+	result := a.EnsureConfigPersisted()
+
+	if result.Created {
+		t.Fatalf("expected Created to be false when config file already exists")
+	}
+	expectedPath := filepath.Join(tmpDir, ".env")
+	if result.Path != expectedPath {
+		t.Fatalf("expected Path to be %q, got %q", expectedPath, result.Path)
 	}
 }
 
