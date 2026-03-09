@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -156,7 +155,6 @@ func EnsurePersisted(cfg *Config) (bool, error) {
 		if !os.IsNotExist(statErr) {
 			return false, statErr
 		}
-		log.Printf("Config file not found at %s — creating from current credentials", p)
 		return true, Save(cfg)
 	}
 	return false, nil // file exists — nothing to do
