@@ -141,3 +141,21 @@ func boolToStr(b bool) string {
 	}
 	return "false"
 }
+
+// EnsurePersisted checks whether the config dir .env file exists.
+// If missing, it creates it from the current in-memory config.
+// If the file already exists, it is left untouched — credentials are never overwritten.
+// Returns true if a new file was created (migration happened).
+func EnsurePersisted(cfg *Config) (bool, error) {
+	p, err := FilePath()
+	if err != nil {
+		return false, err
+	}
+	if _, statErr := os.Stat(p); statErr != nil {
+		if !os.IsNotExist(statErr) {
+			return false, statErr
+		}
+		return true, Save(cfg)
+	}
+	return false, nil // file exists — nothing to do
+}

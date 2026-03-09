@@ -3,6 +3,7 @@
 import {models} from '../models';
 import {clockify} from '../models';
 import {config} from '../models';
+import {app} from '../models';
 
 export function AddManualEntry(arg1:models.ManualEntryRequest):Promise<models.TimeEntry>;
 
@@ -13,6 +14,8 @@ export function CheckForUpdates():Promise<models.UpdateInfo>;
 export function CheckStartupUpdate():Promise<void>;
 
 export function DeleteEntry(arg1:string):Promise<void>;
+
+export function EnsureConfigPersisted():Promise<app.ConfigPersistenceResult>;
 
 export function FetchWorkspaces(arg1:string):Promise<Array<clockify.WorkspaceInfo>>;
 

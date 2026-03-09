@@ -838,6 +838,15 @@ function initSettings() {
         }).catch(() => {});
     }
 
+    // Ensure config file exists in persistent config dir
+    if (App.EnsureConfigPersisted) {
+        App.EnsureConfigPersisted().then(result => {
+            if (result && result.created) {
+                showToast(`No config file found — credentials saved to ${result.path}`, 'info');
+            }
+        }).catch(() => {});
+    }
+
     // Populate form if backend supports getting config
     if (App.GetConfig) {
         App.GetConfig().then(cfg => {
