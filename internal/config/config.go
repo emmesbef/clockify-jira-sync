@@ -152,9 +152,12 @@ func EnsurePersisted(cfg *Config) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if _, statErr := os.Stat(p); statErr == nil {
-		return false, nil // file exists — nothing to do
+	if _, statErr := os.Stat(p); statErr != nil {
+		if !os.IsNotExist(statErr) {
+			return false, statErr
+		}
+		log.Printf("Config file not found at %s — creating from current credentials", p)
+		return true, Save(cfg)
 	}
-	log.Printf("Config file not found at %s — creating from current credentials", p)
-	return true, Save(cfg)
+	return false, nil // file exists — nothing to do
 }
