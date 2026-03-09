@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.3](https://github.com/emmesbef/clockify-jira-sync/compare/v1.10.2...v1.10.3) (2026-03-09)
+
+
+### Bug Fixes
+
+* auto-persist credentials to config dir when .env is missing ([b52f701](https://github.com/emmesbef/clockify-jira-sync/commit/b52f70149ecbff1ccc48faf109d87fe0d3c94518))
+
 ## [1.10.2](https://github.com/emmesbef/clockify-jira-sync/compare/v1.10.1...v1.10.2) (2026-03-08)
 
 
