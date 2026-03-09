@@ -101,3 +101,87 @@ func TestFilePath_ReturnsExpectedPath(t *testing.T) {
 		t.Errorf("expected %q, got %q", expected, p)
 	}
 }
+
+func TestEnsurePersisted_CreatesWhenMissing(t *testing.T) {
+	tmpDir := t.TempDir()
+	SetConfigDir(tmpDir)
+	defer SetConfigDir("")
+
+	cfg := &Config{
+		ClockifyAPIKey:    "persist-key",
+		ClockifyWorkspace: "persist-ws",
+		JiraBaseURL:       "https://persist.atlassian.net",
+		JiraEmail:         "persist@example.com",
+		JiraAPIToken:      "persist-token",
+		AutoUpdate:        true,
+	}
+
+	created, err := EnsurePersisted(cfg)
+	if err != nil {
+		t.Fatalf("EnsurePersisted returned error: %v", err)
+	}
+	if !created {
+		t.Error("expected created=true when .env is missing")
+	}
+
+	// Verify the file was written with correct values
+	envPath := filepath.Join(tmpDir, ".env")
+	envMap, err := godotenv.Read(envPath)
+	if err != nil {
+		t.Fatalf("failed to read created .env: %v", err)
+	}
+	if envMap["CLOCKIFY_API_KEY"] != "persist-key" {
+		t.Errorf("expected CLOCKIFY_API_KEY=persist-key, got %q", envMap["CLOCKIFY_API_KEY"])
+	}
+	if envMap["JIRA_BASE_URL"] != "https://persist.atlassian.net" {
+		t.Errorf("expected JIRA_BASE_URL=https://persist.atlassian.net, got %q", envMap["JIRA_BASE_URL"])
+	}
+}
+
+func TestEnsurePersisted_SkipsWhenExists(t *testing.T) {
+	tmpDir := t.TempDir()
+	SetConfigDir(tmpDir)
+	defer SetConfigDir("")
+
+	// Pre-create .env with original credentials
+	envPath := filepath.Join(tmpDir, ".env")
+	original := map[string]string{
+		"CLOCKIFY_API_KEY":    "original-key",
+		"CLOCKIFY_WORKSPACE_ID": "original-ws",
+		"JIRA_BASE_URL":       "https://original.atlassian.net",
+		"JIRA_EMAIL":          "original@example.com",
+		"JIRA_API_TOKEN":      "original-token",
+	}
+	if err := godotenv.Write(original, envPath); err != nil {
+		t.Fatalf("failed to write seed .env: %v", err)
+	}
+
+	// Call EnsurePersisted with DIFFERENT values
+	cfg := &Config{
+		ClockifyAPIKey:    "new-key",
+		ClockifyWorkspace: "new-ws",
+		JiraBaseURL:       "https://new.atlassian.net",
+		JiraEmail:         "new@example.com",
+		JiraAPIToken:      "new-token",
+	}
+
+	created, err := EnsurePersisted(cfg)
+	if err != nil {
+		t.Fatalf("EnsurePersisted returned error: %v", err)
+	}
+	if created {
+		t.Error("expected created=false when .env already exists")
+	}
+
+	// Verify original values are PRESERVED (not overwritten)
+	envMap, err := godotenv.Read(envPath)
+	if err != nil {
+		t.Fatalf("failed to read .env: %v", err)
+	}
+	if envMap["CLOCKIFY_API_KEY"] != "original-key" {
+		t.Errorf("expected original-key to be preserved, got %q", envMap["CLOCKIFY_API_KEY"])
+	}
+	if envMap["JIRA_BASE_URL"] != "https://original.atlassian.net" {
+		t.Errorf("expected original URL to be preserved, got %q", envMap["JIRA_BASE_URL"])
+	}
+}

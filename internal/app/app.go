@@ -594,6 +594,10 @@ func (a *App) CheckForUpdates() (*models.UpdateInfo, error) {
 
 // ApplyUpdate downloads and applies the given update.
 func (a *App) ApplyUpdate(info models.UpdateInfo) error {
+	// Safety net: ensure config is persisted before replacing the binary
+	if _, err := config.EnsurePersisted(a.cfg); err != nil {
+		log.Printf("Warning: could not ensure config persistence before update: %v", err)
+	}
 	return a.updater.DownloadAndApply(&info)
 }
 
@@ -610,6 +614,24 @@ func (a *App) SetUpdatePreferences(prefs models.UpdatePreferences) error {
 	a.cfg.AutoUpdate = prefs.AutoCheck
 	a.cfg.BetaChannel = prefs.BetaChannel
 	return a.cfg.Save()
+}
+
+// ConfigPersistenceResult holds the result of EnsureConfigPersisted.
+type ConfigPersistenceResult struct {
+	Created bool   `json:"created"`
+	Path    string `json:"path"`
+}
+
+// EnsureConfigPersisted checks that the config dir .env exists. If missing,
+// creates it from the current in-memory credentials. Returns whether a new
+// file was created and the path. Existing files are never overwritten.
+func (a *App) EnsureConfigPersisted() ConfigPersistenceResult {
+	p, _ := config.FilePath()
+	created, err := config.EnsurePersisted(a.cfg)
+	if err != nil {
+		log.Printf("Config persistence failed: %v", err)
+	}
+	return ConfigPersistenceResult{Created: created, Path: p}
 }
 
 // CheckStartupUpdate runs the auto-update check on startup.

@@ -22,6 +22,10 @@ export function DeleteEntry(arg1) {
   return window['go']['app']['App']['DeleteEntry'](arg1);
 }
 
+export function EnsureConfigPersisted() {
+  return window['go']['app']['App']['EnsureConfigPersisted']();
+}
+
 export function FetchWorkspaces(arg1) {
   return window['go']['app']['App']['FetchWorkspaces'](arg1);
 }

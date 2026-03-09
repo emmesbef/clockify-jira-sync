@@ -1,3 +1,22 @@
+export namespace app {
+	
+	export class ConfigPersistenceResult {
+	    created: boolean;
+	    path: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ConfigPersistenceResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.created = source["created"];
+	        this.path = source["path"];
+	    }
+	}
+
+}
+
 export namespace clockify {
 	
 	export class ProjectInfo {

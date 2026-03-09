@@ -30,6 +30,15 @@ func main() {
 	if err != nil {
 		log.Printf("Config warning: %v (app will start but API calls will fail)", err)
 		cfg = &config.Config{}
+	} else {
+		// Ensure credentials are persisted to the config dir .env.
+		// This migrates credentials that come from a local .env or shell env vars.
+		if created, saveErr := config.EnsurePersisted(cfg); saveErr != nil {
+			log.Printf("Config persistence warning: %v", saveErr)
+		} else if created {
+			p, _ := config.FilePath()
+			log.Printf("Credentials migrated to %s", p)
+		}
 	}
 
 	// Create main application
