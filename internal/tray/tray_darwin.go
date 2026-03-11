@@ -13,9 +13,13 @@ import "C"
 import "unsafe"
 
 var (
-	onShow         func()
-	onQuit         func()
-	onCheckUpdates func()
+	onShow               func()
+	onQuit               func()
+	onCheckUpdates       func()
+	onStartTimer         func(ticketKey, description string)
+	onStopTimer          func()
+	onLoadAssignedTicket func() string
+	onSearchTicket       func(query string) string
 )
 
 // Init creates the macOS status bar icon and context menu.
@@ -23,10 +27,28 @@ var (
 // onShowFn is called when "Show/Hide Window" is clicked.
 // onQuitFn is called when "Quit" is clicked.
 // onCheckUpdatesFn is called when "Check for Updates…" is clicked.
-func Init(version string, icon []byte, onShowFn func(), onQuitFn func(), onCheckUpdatesFn func()) {
+// onStartTimerFn is called when "Start Timer…" is submitted.
+// onStopTimerFn is called when "Stop Timer" is clicked.
+// onLoadAssignedTicketFn loads the top assigned tickets for empty/focus state.
+// onSearchTicketFn loads matching tickets for a non-empty query.
+func Init(
+	version string,
+	icon []byte,
+	onShowFn func(),
+	onQuitFn func(),
+	onCheckUpdatesFn func(),
+	onStartTimerFn func(ticketKey, description string),
+	onStopTimerFn func(),
+	onLoadAssignedTicketFn func() string,
+	onSearchTicketFn func(query string) string,
+) {
 	onShow = onShowFn
 	onQuit = onQuitFn
 	onCheckUpdates = onCheckUpdatesFn
+	onStartTimer = onStartTimerFn
+	onStopTimer = onStopTimerFn
+	onLoadAssignedTicket = onLoadAssignedTicketFn
+	onSearchTicket = onSearchTicketFn
 
 	cVersion := C.CString(version)
 	defer C.free(unsafe.Pointer(cVersion))
@@ -50,6 +72,32 @@ func SetWindowVisible(visible bool) {
 	C.setTrayWindowVisible(v)
 }
 
+// SetStatusText sets timer status text next to the tray icon.
+func SetStatusText(text string) {
+	cText := C.CString(text)
+	defer C.free(unsafe.Pointer(cText))
+	C.setTrayStatusText(cText)
+}
+
+// SetTimerRunning updates the tray timer action item title/state (Start vs Stop).
+func SetTimerRunning(running bool) {
+	v := C.int(0)
+	if running {
+		v = 1
+	}
+	C.setTrayTimerRunning(v)
+}
+
+// SetAppBackgroundMode switches to accessory mode so the app behaves as a tray/background app.
+func SetAppBackgroundMode() {
+	C.setTrayAppBackgroundMode()
+}
+
+// SetAppForegroundMode switches to regular app mode so the main window can be foregrounded.
+func SetAppForegroundMode() {
+	C.setTrayAppForegroundMode()
+}
+
 //export goTrayShow
 func goTrayShow() {
 	if onShow != nil {
@@ -69,4 +117,34 @@ func goTrayCheckUpdates() {
 	if onCheckUpdates != nil {
 		onCheckUpdates()
 	}
+}
+
+//export goTrayStartTimer
+func goTrayStartTimer(ticketKey *C.char, description *C.char) {
+	if onStartTimer != nil {
+		onStartTimer(C.GoString(ticketKey), C.GoString(description))
+	}
+}
+
+//export goTrayStopTimer
+func goTrayStopTimer() {
+	if onStopTimer != nil {
+		onStopTimer()
+	}
+}
+
+//export goTrayLoadAssignedTickets
+func goTrayLoadAssignedTickets() *C.char {
+	if onLoadAssignedTicket == nil {
+		return C.CString("[]")
+	}
+	return C.CString(onLoadAssignedTicket())
+}
+
+//export goTraySearchTickets
+func goTraySearchTickets(query *C.char) *C.char {
+	if onSearchTicket == nil {
+		return C.CString("[]")
+	}
+	return C.CString(onSearchTicket(C.GoString(query)))
 }

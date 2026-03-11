@@ -2,8 +2,14 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -34,7 +40,16 @@ type App struct {
 	entries       []models.TimeEntry // local cache of entries
 	mockURL       string             // url for local testing (if enabled)
 	windowVisible bool               // tracks window visibility for tray menu
+	trayCancel    context.CancelFunc
+	quitRequested bool
 }
+
+var startDetachedProcess = func(name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	return cmd.Start()
+}
+
+var trayTicketKeyPattern = regexp.MustCompile(`[A-Z][A-Z0-9]+-\d+`)
 
 // NewApp creates a new application instance
 func NewApp(cfg *config.Config, version string) *App {
@@ -62,24 +77,20 @@ func (a *App) SetMockMode(mockURL string) {
 func (a *App) InitTray(version string, icon []byte) {
 	tray.Init(version, icon, func() {
 		// Toggle window visibility
-		a.mu.Lock()
-		a.windowVisible = !a.windowVisible
-		visible := a.windowVisible
-		a.mu.Unlock()
+		a.mu.RLock()
+		visible := !a.windowVisible
+		a.mu.RUnlock()
 
-		if a.ctx != nil {
-			if visible {
-				wailsRuntime.WindowShow(a.ctx)
+		go func(targetVisible bool) {
+			if targetVisible {
+				a.showFromTray()
 			} else {
-				wailsRuntime.WindowHide(a.ctx)
+				a.hideToTray()
 			}
-		}
-		tray.SetWindowVisible(visible)
+		}(visible)
 	}, func() {
 		// Quit the app
-		if a.ctx != nil {
-			wailsRuntime.Quit(a.ctx)
-		}
+		go a.requestQuit()
 	}, func() {
 		// Check for updates from tray
 		go func() {
@@ -92,7 +103,89 @@ func (a *App) InitTray(version string, icon []byte) {
 				wailsRuntime.EventsEmit(a.ctx, "update-available", info)
 			}
 		}()
+	}, func(ticketKey, description string) {
+		// Start timer directly from a tray-native popover without showing the main app window.
+		go func() {
+			ticketKey = strings.TrimSpace(ticketKey)
+			description = strings.TrimSpace(description)
+			if ticketKey == "" {
+				ticketKey = extractTicketKey(description)
+			}
+			if ticketKey == "" {
+				if a.ctx != nil {
+					wailsRuntime.EventsEmit(a.ctx, "tray-start-timer-error", "Please choose or type a Jira ticket key (for example PROJ-123)")
+				}
+				return
+			}
+			if description == "" {
+				description = ticketKey
+			}
+
+			if _, err := a.StartTimer(ticketKey, "", description); err != nil {
+				log.Printf("Tray start timer failed: %v", err)
+				if a.ctx != nil {
+					wailsRuntime.EventsEmit(a.ctx, "tray-start-timer-error", err.Error())
+				}
+				return
+			}
+
+			if a.ctx != nil {
+				wailsRuntime.EventsEmit(a.ctx, "tray-timer-started", ticketKey)
+			}
+		}()
+	}, func() {
+		go func() {
+			entry, err := a.StopTimer()
+			if err != nil {
+				log.Printf("Tray stop timer failed: %v", err)
+				if strings.Contains(err.Error(), "no timer is running") {
+					tray.SetTimerRunning(false)
+				}
+				if a.ctx != nil {
+					wailsRuntime.EventsEmit(a.ctx, "tray-stop-timer-error", err.Error())
+				}
+				return
+			}
+
+			if a.ctx != nil {
+				ticketKey := ""
+				if entry != nil {
+					ticketKey = entry.TicketKey
+				}
+				wailsRuntime.EventsEmit(a.ctx, "tray-timer-stopped", ticketKey)
+			}
+		}()
+	}, func() string {
+		tickets, err := a.GetMyTickets()
+		if err != nil {
+			log.Printf("Tray assigned tickets fetch failed: %v", err)
+			return "[]"
+		}
+		return marshalTrayTickets(tickets, 5)
+	}, func(query string) string {
+		query = strings.TrimSpace(query)
+		if query == "" {
+			tickets, err := a.GetMyTickets()
+			if err != nil {
+				log.Printf("Tray assigned tickets fetch failed: %v", err)
+				return "[]"
+			}
+			return marshalTrayTickets(tickets, 5)
+		}
+
+		tickets, err := a.SearchTickets(query)
+		if err != nil {
+			log.Printf("Tray ticket search failed: %v", err)
+			return "[]"
+		}
+		return marshalTrayTickets(tickets, 10)
 	})
+
+	a.mu.RLock()
+	running := a.timer.Running
+	a.mu.RUnlock()
+	tray.SetTimerRunning(running)
+	a.refreshTrayStatus()
 }
 
 // --- Configuration Methods ---
@@ -109,8 +202,10 @@ func (a *App) SaveConfig(newCfg config.Config) error {
 	a.cfg.JiraBaseURL = newCfg.JiraBaseURL
 	a.cfg.JiraEmail = newCfg.JiraEmail
 	a.cfg.JiraAPIToken = newCfg.JiraAPIToken
-	a.cfg.AutoUpdate = newCfg.AutoUpdate
-	a.cfg.BetaChannel = newCfg.BetaChannel
+	if newCfg.TrayTimerFormat != "" {
+		a.cfg.TrayTimerFormat = config.NormalizeTrayTimerFormat(newCfg.TrayTimerFormat)
+		a.cfg.TrayShowTimer = newCfg.TrayShowTimer
+	}
 
 	err := config.Save(a.cfg)
 	if err != nil {
@@ -128,6 +223,8 @@ func (a *App) SaveConfig(newCfg config.Config) error {
 		// Try to fetch clockify user to ensure fresh init
 		_ = a.clockify.Init()
 	}
+
+	a.refreshTrayStatus()
 
 	return nil
 }
@@ -181,6 +278,55 @@ func (a *App) GetIntegrationStatus() models.IntegrationStatus {
 	return status
 }
 
+func (a *App) setWindowVisible(visible bool) {
+	a.mu.Lock()
+	a.windowVisible = visible
+	a.mu.Unlock()
+
+	tray.SetWindowVisible(visible)
+	if a.ctx != nil {
+		wailsRuntime.EventsEmit(a.ctx, "window-visibility-changed", visible)
+	}
+}
+
+func (a *App) hideToTray() {
+	a.setWindowVisible(false)
+
+	if a.ctx != nil {
+		wailsRuntime.WindowHide(a.ctx)
+		wailsRuntime.Hide(a.ctx)
+	}
+	tray.SetAppBackgroundMode()
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		tray.SetAppBackgroundMode()
+	}()
+}
+
+func (a *App) showFromTray() {
+	a.setWindowVisible(true)
+
+	tray.SetAppForegroundMode()
+	if a.ctx != nil {
+		ctx := a.ctx
+		go func() {
+			time.Sleep(80 * time.Millisecond)
+			wailsRuntime.Show(ctx)
+			wailsRuntime.WindowShow(ctx)
+		}()
+	}
+}
+
+func (a *App) requestQuit() {
+	a.mu.Lock()
+	a.quitRequested = true
+	a.mu.Unlock()
+
+	if a.ctx != nil {
+		wailsRuntime.Quit(a.ctx)
+	}
+}
+
 // Startup is called when the Wails app starts
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
@@ -205,6 +351,20 @@ func (a *App) DomReady(ctx context.Context) {
 	go a.CheckStartupUpdate()
 }
 
+// BeforeClose is called before the window closes. We keep the app running in
+// tray mode and switch to background (accessory) app behavior.
+func (a *App) BeforeClose(ctx context.Context) (prevent bool) {
+	a.mu.RLock()
+	quitting := a.quitRequested
+	a.mu.RUnlock()
+	if quitting {
+		return false
+	}
+
+	a.hideToTray()
+	return true
+}
+
 // Shutdown is called when the app is closing
 func (a *App) Shutdown(ctx context.Context) {
 	// Stop any running timer gracefully
@@ -214,7 +374,12 @@ func (a *App) Shutdown(ctx context.Context) {
 
 	if running {
 		_, _ = a.StopTimer()
+		return
 	}
+
+	a.mu.Lock()
+	a.stopTrayUpdatesLocked()
+	a.mu.Unlock()
 }
 
 // --- Jira Ticket Methods ---
@@ -276,6 +441,8 @@ func (a *App) StartTimer(ticketKey string, projectID string, description string)
 		StartedAt:     time.Now(),
 		ClockifyID:    clockifyID,
 	}
+	tray.SetTimerRunning(true)
+	a.startTrayUpdatesLocked()
 
 	return &a.timer, nil
 }
@@ -324,6 +491,7 @@ func (a *App) StopTimer() (*models.TimeEntry, error) {
 	a.entries = append([]models.TimeEntry{entry}, a.entries...)
 
 	// Reset timer
+	a.stopTrayUpdatesLocked()
 	a.timer = models.TimerState{}
 
 	return &entry, nil
@@ -601,6 +769,54 @@ func (a *App) ApplyUpdate(info models.UpdateInfo) error {
 	return a.updater.DownloadAndApply(&info)
 }
 
+// RestartApplication relaunches the current app and quits this process.
+func (a *App) RestartApplication() error {
+	exePath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("failed to resolve executable path: %w", err)
+	}
+
+	if err := relaunchExecutable(exePath); err != nil {
+		return err
+	}
+
+	if a.ctx != nil {
+		go func() {
+			time.Sleep(200 * time.Millisecond)
+			a.requestQuit()
+		}()
+	}
+
+	return nil
+}
+
+func relaunchExecutable(exePath string) error {
+	if runtime.GOOS == "darwin" {
+		if bundlePath := macAppBundlePath(exePath); bundlePath != "" {
+			if err := startDetachedProcess("open", "-n", bundlePath); err != nil {
+				return fmt.Errorf("failed to relaunch macOS app bundle: %w", err)
+			}
+			return nil
+		}
+	}
+
+	if err := startDetachedProcess(exePath); err != nil {
+		return fmt.Errorf("failed to relaunch executable: %w", err)
+	}
+
+	return nil
+}
+
+func macAppBundlePath(exePath string) string {
+	clean := filepath.Clean(exePath)
+	const marker = ".app/Contents/MacOS/"
+	idx := strings.Index(clean, marker)
+	if idx == -1 {
+		return ""
+	}
+	return clean[:idx+len(".app")]
+}
+
 // GetUpdatePreferences returns the current update settings.
 func (a *App) GetUpdatePreferences() models.UpdatePreferences {
 	return models.UpdatePreferences{
@@ -666,4 +882,103 @@ func (a *App) CheckStartupUpdate() {
 	if info != nil && a.ctx != nil {
 		wailsRuntime.EventsEmit(a.ctx, "update-available", info)
 	}
+}
+
+func (a *App) startTrayUpdatesLocked() {
+	a.stopTrayUpdatesLocked()
+	tray.SetTimerRunning(a.timer.Running)
+
+	if !a.timer.Running {
+		tray.SetStatusText("")
+		return
+	}
+	if !a.cfg.TrayShowTimer {
+		tray.SetStatusText("")
+		return
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	a.trayCancel = cancel
+
+	go func() {
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+
+		a.refreshTrayStatus()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				a.refreshTrayStatus()
+			}
+		}
+	}()
+}
+
+func (a *App) stopTrayUpdatesLocked() {
+	if a.trayCancel != nil {
+		a.trayCancel()
+		a.trayCancel = nil
+	}
+	tray.SetStatusText("")
+	tray.SetTimerRunning(false)
+}
+
+func (a *App) refreshTrayStatus() {
+	a.mu.RLock()
+	timer := a.timer
+	show := a.cfg.TrayShowTimer
+	format := config.NormalizeTrayTimerFormat(a.cfg.TrayTimerFormat)
+	a.mu.RUnlock()
+
+	if !timer.Running || !show {
+		tray.SetStatusText("")
+		return
+	}
+
+	elapsed := time.Since(timer.StartedAt)
+	if elapsed < 0 {
+		elapsed = 0
+	}
+	text := formatTrayDuration(elapsed, format)
+	if timer.TicketKey != "" {
+		text = fmt.Sprintf("%s %s", text, timer.TicketKey)
+	}
+	tray.SetStatusText(text)
+}
+
+func formatTrayDuration(elapsed time.Duration, format string) string {
+	totalSeconds := int64(elapsed.Seconds())
+	hours := totalSeconds / 3600
+	minutes := (totalSeconds % 3600) / 60
+	seconds := totalSeconds % 60
+
+	if config.NormalizeTrayTimerFormat(format) == "hh:mm" {
+		return fmt.Sprintf("%02d:%02d", hours, minutes)
+	}
+
+	return fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds)
+}
+
+func extractTicketKey(input string) string {
+	normalized := strings.ToUpper(strings.TrimSpace(input))
+	if normalized == "" {
+		return ""
+	}
+	return trayTicketKeyPattern.FindString(normalized)
+}
+
+func marshalTrayTickets(tickets []models.JiraTicket, limit int) string {
+	if limit > 0 && len(tickets) > limit {
+		tickets = tickets[:limit]
+	}
+
+	payload, err := json.Marshal(tickets)
+	if err != nil {
+		log.Printf("Tray tickets marshaling failed: %v", err)
+		return "[]"
+	}
+
+	return string(payload)
 }

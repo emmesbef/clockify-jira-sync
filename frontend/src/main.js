@@ -19,6 +19,8 @@ try {
 let selectedTicket = null;
 let timerInterval = null;
 let timerStartTime = null;
+let traySelectedTicket = null;
+let traySearchTimeout = null;
 
 // ===== Init =====
 document.addEventListener('DOMContentLoaded', () => {
@@ -29,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initHistory();
     initBranchDetection();
     initModal();
+    initTrayStartTimerModal();
     initTabs();
     initModeToggle();
     initSettings();
@@ -277,11 +280,19 @@ async function loadAssignedTickets() {
     }
 }
 
-async function loadProjects() {
+async function loadProjects(selectedProjectID = '') {
     const select = document.getElementById('project-select');
+    if (!select) return;
+
+    const previousSelection = selectedProjectID || select.value || '';
+    select.innerHTML = '<option value="">— No project —</option>';
+
     try {
         const projects = await App.GetProjects();
-        if (!projects || projects.length === 0) return;
+        if (!projects || projects.length === 0) {
+            syncTrayProjectOptions();
+            return;
+        }
 
         projects.forEach(p => {
             const opt = document.createElement('option');
@@ -289,8 +300,14 @@ async function loadProjects() {
             opt.textContent = p.clientName ? `${p.name} (${p.clientName})` : p.name;
             select.appendChild(opt);
         });
+
+        if (previousSelection && [...select.options].some(o => o.value === previousSelection)) {
+            select.value = previousSelection;
+        }
     } catch (err) {
         console.error('Failed to load projects:', err);
+    } finally {
+        syncTrayProjectOptions();
     }
 }
 
@@ -325,6 +342,14 @@ async function stopTimer() {
         showToast(`Timer stopped — ${formatDuration(entry.duration)} logged`, 'success');
         refreshHistory();
     } catch (err) {
+        const message = String(err || '');
+        if (message.includes('no timer is running')) {
+            clearTimerUI();
+            await checkTimerStatus();
+            await refreshHistory();
+            showToast('Timer was already stopped. Status refreshed.', 'info');
+            return;
+        }
         showToast('Failed to stop timer: ' + err, 'error');
     }
 }
@@ -372,6 +397,8 @@ async function checkTimerStatus() {
             selectedTicket = { key: status.ticketKey, summary: status.ticketSummary };
             selectTicket(selectedTicket);
             showTimerRunning(status.ticketKey, status.ticketSummary);
+        } else {
+            clearTimerUI();
         }
     } catch (err) {
         console.error('Failed to check timer status:', err);
@@ -546,7 +573,7 @@ function renderHistory(entries) {
 // ===== Edit Modal =====
 function initModal() {
     document.getElementById('edit-cancel-btn').addEventListener('click', closeEditModal);
-    document.querySelector('.modal-backdrop')?.addEventListener('click', closeEditModal);
+    document.querySelector('#edit-modal .modal-backdrop')?.addEventListener('click', closeEditModal);
 
     document.getElementById('edit-form').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -592,12 +619,219 @@ function closeEditModal() {
     document.getElementById('edit-modal').classList.add('hidden');
 }
 
+function syncTrayProjectOptions() {
+    const source = document.getElementById('project-select');
+    const target = document.getElementById('tray-project-select');
+    if (!source || !target) return;
+
+    const previousSelection = target.value || '';
+    target.innerHTML = source.innerHTML;
+    if (previousSelection && [...target.options].some(o => o.value === previousSelection)) {
+        target.value = previousSelection;
+    }
+}
+
+function initTrayStartTimerModal() {
+    const modal = document.getElementById('tray-start-modal');
+    const form = document.getElementById('tray-start-form');
+    const input = document.getElementById('tray-ticket-search');
+    const results = document.getElementById('tray-ticket-results');
+    const cancelBtn = document.getElementById('tray-start-cancel-btn');
+    const backdrop = document.querySelector('#tray-start-modal .modal-backdrop');
+    if (!modal || !form || !input || !results || !cancelBtn || !backdrop) return;
+
+    cancelBtn.addEventListener('click', closeTrayStartTimerModal);
+    backdrop.addEventListener('click', closeTrayStartTimerModal);
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await startTimerFromTrayModal();
+    });
+
+    input.addEventListener('input', () => {
+        clearTimeout(traySearchTimeout);
+        const query = input.value.trim();
+        traySelectedTicket = null;
+
+        if (query.length === 0) {
+            results.classList.add('hidden');
+            return;
+        }
+
+        if (query.length === 1) {
+            const filtered = assignedTickets.filter(t =>
+                t.key.toUpperCase().startsWith(query.toUpperCase()) ||
+                t.summary.toUpperCase().startsWith(query.toUpperCase())
+            );
+            if (filtered.length > 0) {
+                renderTrayTicketDropdown(filtered);
+            }
+        }
+
+        traySearchTimeout = setTimeout(async () => {
+            try {
+                const tickets = await App.SearchTickets(query);
+                renderTrayTicketDropdown(tickets || []);
+            } catch (err) {
+                showToast('Tray ticket search failed: ' + err, 'error');
+            }
+        }, 250);
+    });
+
+    input.addEventListener('focus', () => {
+        if (input.value.trim().length < 2 && assignedTickets.length > 0) {
+            renderTrayTicketDropdown(assignedTickets);
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (modal.classList.contains('hidden')) return;
+        if (!e.target.closest('#tray-start-modal .search-container')) {
+            results.classList.add('hidden');
+        }
+    });
+
+    if (wailsRuntime?.EventsOn) {
+        wailsRuntime.EventsOn('tray-start-timer', openTrayStartTimerModal);
+    }
+}
+
+function renderTrayTicketDropdown(tickets) {
+    const results = document.getElementById('tray-ticket-results');
+    if (!results) return;
+
+    if (!tickets || tickets.length === 0) {
+        results.innerHTML = '<div class="dropdown-item"><span class="ticket-summary">No tickets found</span></div>';
+        results.classList.remove('hidden');
+        return;
+    }
+
+    const shown = tickets.slice(0, 6);
+    results.innerHTML = shown.map(t => `
+        <div class="dropdown-item" data-key="${t.key}" data-summary="${escapeHtml(t.summary || '')}">
+            <span class="ticket-key">${t.key}</span>
+            <span class="ticket-summary">${escapeHtml(t.summary || '')}</span>
+            <span class="ticket-type-badge">${t.issueType || 'Task'}</span>
+        </div>
+    `).join('');
+
+    results.querySelectorAll('.dropdown-item').forEach(item => {
+        item.addEventListener('click', () => {
+            traySelectedTicket = {
+                key: item.dataset.key,
+                summary: item.dataset.summary || '',
+            };
+            const input = document.getElementById('tray-ticket-search');
+            const desc = document.getElementById('tray-description');
+            if (input) input.value = `${traySelectedTicket.key} ${traySelectedTicket.summary}`.trim();
+            if (desc && !desc.value.trim()) desc.value = `${traySelectedTicket.key} ${traySelectedTicket.summary}`.trim();
+            results.classList.add('hidden');
+        });
+    });
+
+    results.classList.remove('hidden');
+}
+
+function openTrayStartTimerModal() {
+    const modal = document.getElementById('tray-start-modal');
+    if (!modal) return;
+
+    document.querySelector('.nav-tab[data-target="timer-view"]')?.click();
+    syncTrayProjectOptions();
+
+    const trayProject = document.getElementById('tray-project-select');
+    const mainProject = document.getElementById('project-select');
+    if (trayProject && mainProject && mainProject.value) {
+        trayProject.value = mainProject.value;
+    }
+
+    const searchInput = document.getElementById('tray-ticket-search');
+    const descInput = document.getElementById('tray-description');
+    const results = document.getElementById('tray-ticket-results');
+    if (results) results.classList.add('hidden');
+
+    traySelectedTicket = selectedTicket ? { ...selectedTicket } : null;
+    if (searchInput) {
+        searchInput.value = traySelectedTicket
+            ? `${traySelectedTicket.key} ${traySelectedTicket.summary || ''}`.trim()
+            : '';
+        setTimeout(() => searchInput.focus(), 0);
+    }
+    if (descInput) {
+        descInput.value = traySelectedTicket
+            ? `${traySelectedTicket.key} ${traySelectedTicket.summary || ''}`.trim()
+            : '';
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function closeTrayStartTimerModal() {
+    document.getElementById('tray-start-modal')?.classList.add('hidden');
+}
+
+async function startTimerFromTrayModal() {
+    if (!traySelectedTicket?.key) {
+        showToast('Please select a ticket to start timer', 'error');
+        return;
+    }
+
+    const projectId = document.getElementById('tray-project-select')?.value || '';
+    let description = document.getElementById('tray-description')?.value.trim() || '';
+    if (!description) {
+        description = document.getElementById('tray-ticket-search')?.value.trim() || traySelectedTicket.key;
+    }
+
+    try {
+        const state = await App.StartTimer(traySelectedTicket.key, projectId, description);
+        selectedTicket = traySelectedTicket;
+        selectTicket(selectedTicket);
+        timerStartTime = new Date(state.startedAt);
+        showTimerRunning(state.ticketKey || traySelectedTicket.key, state.ticketSummary || traySelectedTicket.summary || '');
+
+        const mainProject = document.getElementById('project-select');
+        if (mainProject) mainProject.value = projectId;
+
+        closeTrayStartTimerModal();
+        showToast(`Timer started for ${traySelectedTicket.key}`, 'success');
+    } catch (err) {
+        showToast('Failed to start timer: ' + err, 'error');
+    }
+}
+
 // ===== Branch Detection (SSE via Wails Events) =====
 function initBranchDetection() {
     // Listen for Wails runtime events
     if (window.runtime) {
         window.runtime.EventsOn('branch-detected', (detection) => {
             showBranchBanner(detection);
+        });
+        window.runtime.EventsOn('tray-timer-started', async (ticketKey) => {
+            await checkTimerStatus();
+            await refreshHistory();
+            if (ticketKey) {
+                showToast(`Tray timer started for ${ticketKey}`, 'success');
+            }
+        });
+        window.runtime.EventsOn('tray-timer-stopped', async (ticketKey) => {
+            await checkTimerStatus();
+            await refreshHistory();
+            if (ticketKey) {
+                showToast(`Tray timer stopped for ${ticketKey}`, 'success');
+            } else {
+                showToast('Tray timer stopped', 'success');
+            }
+        });
+        window.runtime.EventsOn('tray-start-timer-error', (message) => {
+            showToast(`Tray start failed: ${message}`, 'error');
+        });
+        window.runtime.EventsOn('tray-stop-timer-error', (message) => {
+            showToast(`Tray stop failed: ${message}`, 'error');
+        });
+        window.runtime.EventsOn('window-visibility-changed', async (visible) => {
+            if (visible) {
+                await checkTimerStatus();
+                await refreshHistory();
+            }
         });
     }
 }
@@ -742,16 +976,23 @@ async function fetchAndPopulateWorkspaces(apiKey, selectedId) {
 // Holds the latest update info so "Update Now" can use it
 let pendingUpdateInfo = null;
 
+function readUpdateVersion(info) {
+    return info?.version || info?.Version || '';
+}
+
 function showUpdateBanner(info, forced = false) {
     pendingUpdateInfo = info;
     const banner = document.getElementById('update-banner');
     const text = document.getElementById('update-banner-text');
     const btn = document.getElementById('apply-update-btn');
     if (!banner || !text) return;
+    const version = readUpdateVersion(info);
+    if (!version) return;
 
     const prefix = forced ? '⚠️ Stable update required' : '🆕 Update available';
-    text.textContent = `${prefix}: v${info.Version}`;
+    text.textContent = `${prefix}: v${version}`;
     btn.textContent = 'Update Now';
+    btn.dataset.mode = 'update';
     btn.disabled = false;
     banner.classList.remove('hidden');
 }
@@ -760,6 +1001,11 @@ function hideUpdateBanner() {
     pendingUpdateInfo = null;
     const banner = document.getElementById('update-banner');
     if (banner) banner.classList.add('hidden');
+    const btn = document.getElementById('apply-update-btn');
+    if (btn) {
+        delete btn.dataset.mode;
+        btn.textContent = 'Update Now';
+    }
 }
 
 async function checkForUpdates() {
@@ -769,7 +1015,7 @@ async function checkForUpdates() {
     try {
         if (!App.CheckForUpdates) return;
         const info = await App.CheckForUpdates();
-        if (info && info.Version) {
+        if (readUpdateVersion(info)) {
             showUpdateBanner(info, false);
         } else {
             hideUpdateBanner();
@@ -790,15 +1036,57 @@ async function applyUpdate() {
 
     try {
         await App.ApplyUpdate(pendingUpdateInfo);
+        const version = readUpdateVersion(pendingUpdateInfo);
         showToast('Update applied — please restart the app', 'success');
         const text = document.getElementById('update-banner-text');
-        if (text) text.textContent = '✅ Update installed — restart to use v' + pendingUpdateInfo.Version;
-        if (btn) { btn.textContent = 'Restart'; btn.disabled = false; }
+        if (text && version) text.textContent = '✅ Update installed — restart to use v' + version;
+        if (btn) {
+            btn.textContent = 'Restart';
+            btn.dataset.mode = 'restart';
+            btn.disabled = false;
+        }
     } catch (err) {
         console.error('Apply update failed:', err);
         showToast('Update failed: ' + (err?.message || err), 'error');
-        if (btn) { btn.textContent = 'Update Now'; btn.disabled = false; }
+        if (btn) {
+            btn.textContent = 'Update Now';
+            btn.dataset.mode = 'update';
+            btn.disabled = false;
+        }
     }
+}
+
+async function restartAfterUpdate() {
+    const btn = document.getElementById('apply-update-btn');
+    if (!btn) return;
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Restarting…';
+    try {
+        if (App.RestartApplication) {
+            await App.RestartApplication();
+            return;
+        }
+
+        showToast('Restart is not available in this build. Please restart the app manually.', 'error');
+        btn.textContent = 'Restart';
+        btn.disabled = false;
+    } catch (err) {
+        console.error('Restart failed:', err);
+        showToast('Restart failed: ' + (err?.message || err), 'error');
+        btn.textContent = 'Restart';
+        btn.disabled = false;
+    }
+}
+
+async function handleUpdateButtonClick() {
+    const btn = document.getElementById('apply-update-btn');
+    if (btn?.dataset.mode === 'restart') {
+        await restartAfterUpdate();
+        return;
+    }
+
+    await applyUpdate();
 }
 
 async function loadUpdatePreferences() {
@@ -807,8 +1095,10 @@ async function loadUpdatePreferences() {
         const prefs = await App.GetUpdatePreferences();
         const autoEl = document.getElementById('setting-auto-update');
         const betaEl = document.getElementById('setting-beta-channel');
-        if (autoEl) autoEl.checked = prefs.AutoCheck !== false;
-        if (betaEl) betaEl.checked = !!prefs.BetaChannel;
+        const autoCheck = prefs?.autoCheck ?? prefs?.AutoCheck;
+        const betaChannel = prefs?.betaChannel ?? prefs?.BetaChannel;
+        if (autoEl) autoEl.checked = autoCheck !== false;
+        if (betaEl) betaEl.checked = !!betaChannel;
     } catch (err) {
         console.error('Failed to load update prefs:', err);
     }
@@ -820,8 +1110,8 @@ async function saveUpdatePreferences() {
     const betaEl = document.getElementById('setting-beta-channel');
     try {
         await App.SetUpdatePreferences({
-            AutoCheck: autoEl?.checked ?? true,
-            BetaChannel: betaEl?.checked ?? false,
+            autoCheck: autoEl?.checked ?? true,
+            betaChannel: betaEl?.checked ?? false,
         });
     } catch (err) {
         console.error('Failed to save update prefs:', err);
@@ -855,6 +1145,9 @@ function initSettings() {
                 document.getElementById('setting-jira-url').value = cfg.JiraBaseURL || '';
                 document.getElementById('setting-jira-email').value = cfg.JiraEmail || '';
                 document.getElementById('setting-jira-token').value = cfg.JiraAPIToken || '';
+                document.getElementById('setting-tray-show-timer').checked = cfg.TrayShowTimer !== false;
+                document.getElementById('setting-tray-timer-format').value = cfg.TrayTimerFormat || 'hh:mm:ss';
+                document.getElementById('setting-tray-timer-format').disabled = !document.getElementById('setting-tray-show-timer').checked;
 
                 // Load workspaces if API key is present
                 if (cfg.ClockifyAPIKey) {
@@ -883,6 +1176,9 @@ function initSettings() {
             ws.innerHTML = '<option value="">— enter API key to load —</option>';
         }
     });
+    document.getElementById('setting-tray-show-timer').addEventListener('change', (e) => {
+        document.getElementById('setting-tray-timer-format').disabled = !e.target.checked;
+    });
 
     document.getElementById('settings-api-form').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -894,11 +1190,14 @@ function initSettings() {
             JiraBaseURL: document.getElementById('setting-jira-url').value.trim(),
             JiraEmail: document.getElementById('setting-jira-email').value.trim(),
             JiraAPIToken: document.getElementById('setting-jira-token').value.trim(),
+            TrayTimerFormat: document.getElementById('setting-tray-timer-format').value || 'hh:mm:ss',
+            TrayShowTimer: document.getElementById('setting-tray-show-timer').checked,
         };
 
         try {
             if (App.SaveConfig) {
                 await App.SaveConfig(config);
+                await loadProjects();
                 showToast('Settings saved successfully', 'success');
             } else {
                 showToast('SaveConfig not implemented in backend yet', 'info');
@@ -921,15 +1220,15 @@ function initSettings() {
     document.getElementById('check-update-btn')?.addEventListener('click', checkForUpdates);
 
     // Apply update button
-    document.getElementById('apply-update-btn')?.addEventListener('click', applyUpdate);
+    document.getElementById('apply-update-btn')?.addEventListener('click', handleUpdateButtonClick);
 
     // Listen for backend events (backup path — startup goroutine or tray trigger)
     if (wailsRuntime?.EventsOn) {
         wailsRuntime.EventsOn('update-available', (info) => {
-            if (info && info.Version) showUpdateBanner(info, false);
+            if (readUpdateVersion(info)) showUpdateBanner(info, false);
         });
         wailsRuntime.EventsOn('update-forced', (info) => {
-            if (info && info.Version) showUpdateBanner(info, true);
+            if (readUpdateVersion(info)) showUpdateBanner(info, true);
         });
     }
 
@@ -937,7 +1236,7 @@ function initSettings() {
     // listeners, so we do our own check here as the primary detection path.
     if (App.CheckForUpdates) {
         App.CheckForUpdates().then(info => {
-            if (info && info.Version) showUpdateBanner(info, false);
+            if (readUpdateVersion(info)) showUpdateBanner(info, false);
         }).catch(err => {
             console.error('Startup update check failed:', err);
         });
