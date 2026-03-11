@@ -9,6 +9,7 @@ import (
 
 	"clockify-jira-sync/internal/config"
 	"clockify-jira-sync/internal/mockserver"
+	"clockify-jira-sync/internal/models"
 )
 
 func TestSaveConfigPersistsWorkspace(t *testing.T) {
@@ -51,6 +52,100 @@ func TestSaveConfigPersistsWorkspace(t *testing.T) {
 
 	if envMap["CLOCKIFY_WORKSPACE_ID"] != "new-workspace" {
 		t.Fatalf("expected CLOCKIFY_WORKSPACE_ID to be persisted, got %q", envMap["CLOCKIFY_WORKSPACE_ID"])
+	}
+}
+
+func TestSaveConfigPreservesUpdatePreferences(t *testing.T) {
+	tmpDir := t.TempDir()
+	config.SetConfigDir(tmpDir)
+	defer config.SetConfigDir("")
+
+	mockSrv := mockserver.Start()
+	defer mockSrv.Close()
+
+	a := NewApp(&config.Config{
+		ClockifyAPIKey:    "old-key",
+		ClockifyWorkspace: "old-workspace",
+		JiraBaseURL:       "https://example.atlassian.net",
+		JiraEmail:         "old@example.com",
+		JiraAPIToken:      "old-token",
+		AutoUpdate:        true,
+		BetaChannel:       true,
+	}, "test")
+	a.SetMockMode(mockSrv.URL)
+
+	err := a.SaveConfig(config.Config{
+		ClockifyAPIKey:    "new-key",
+		ClockifyWorkspace: "new-workspace",
+		JiraBaseURL:       "https://new-example.atlassian.net",
+		JiraEmail:         "new@example.com",
+		JiraAPIToken:      "new-token",
+		// Update preferences intentionally omitted (zero values).
+	})
+	if err != nil {
+		t.Fatalf("SaveConfig returned error: %v", err)
+	}
+
+	if !a.cfg.AutoUpdate {
+		t.Fatalf("expected AutoUpdate to stay true")
+	}
+	if !a.cfg.BetaChannel {
+		t.Fatalf("expected BetaChannel to stay true")
+	}
+
+	envPath := filepath.Join(tmpDir, ".env")
+	envMap, err := godotenv.Read(envPath)
+	if err != nil {
+		t.Fatalf("failed to read persisted .env file: %v", err)
+	}
+
+	if envMap["AUTO_UPDATE"] != "true" {
+		t.Fatalf("expected AUTO_UPDATE to remain true, got %q", envMap["AUTO_UPDATE"])
+	}
+	if envMap["BETA_CHANNEL"] != "true" {
+		t.Fatalf("expected BETA_CHANNEL to remain true, got %q", envMap["BETA_CHANNEL"])
+	}
+}
+
+func TestSetUpdatePreferencesPersistsToConfigFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	config.SetConfigDir(tmpDir)
+	defer config.SetConfigDir("")
+
+	a := NewApp(&config.Config{
+		ClockifyAPIKey:    "key",
+		ClockifyWorkspace: "workspace",
+		JiraBaseURL:       "https://example.atlassian.net",
+		JiraEmail:         "user@example.com",
+		JiraAPIToken:      "token",
+		AutoUpdate:        true,
+		BetaChannel:       false,
+	}, "test")
+
+	if err := a.SetUpdatePreferences(models.UpdatePreferences{
+		AutoCheck:   false,
+		BetaChannel: true,
+	}); err != nil {
+		t.Fatalf("SetUpdatePreferences returned error: %v", err)
+	}
+
+	if a.cfg.AutoUpdate {
+		t.Fatalf("expected AutoUpdate to be false after update preference save")
+	}
+	if !a.cfg.BetaChannel {
+		t.Fatalf("expected BetaChannel to be true after update preference save")
+	}
+
+	envPath := filepath.Join(tmpDir, ".env")
+	envMap, err := godotenv.Read(envPath)
+	if err != nil {
+		t.Fatalf("failed to read persisted .env file: %v", err)
+	}
+	if envMap["AUTO_UPDATE"] != "false" {
+		t.Fatalf("expected AUTO_UPDATE=false, got %q", envMap["AUTO_UPDATE"])
+	}
+	if envMap["BETA_CHANNEL"] != "true" {
+		t.Fatalf("expected BETA_CHANNEL=true, got %q", envMap["BETA_CHANNEL"])
 	}
 }
 

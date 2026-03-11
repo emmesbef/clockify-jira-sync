@@ -78,6 +78,10 @@ export function InitTray(arg1, arg2) {
   return window['go']['app']['App']['InitTray'](arg1, arg2);
 }
 
+export function RestartApplication() {
+  return window['go']['app']['App']['RestartApplication']();
+}
+
 export function SaveConfig(arg1) {
   return window['go']['app']['App']['SaveConfig'](arg1);
 }

@@ -15,6 +15,8 @@ func TestLoad_Success(t *testing.T) {
 	os.Setenv("JIRA_BASE_URL", "https://test.atlassian.net")
 	os.Setenv("JIRA_EMAIL", "test@example.com")
 	os.Setenv("JIRA_API_TOKEN", "test-token")
+	os.Setenv("TRAY_TIMER_FORMAT", "hh:mm")
+	os.Setenv("TRAY_SHOW_TIMER", "false")
 
 	// Cleanup
 	defer func() {
@@ -23,6 +25,8 @@ func TestLoad_Success(t *testing.T) {
 		os.Unsetenv("JIRA_BASE_URL")
 		os.Unsetenv("JIRA_EMAIL")
 		os.Unsetenv("JIRA_API_TOKEN")
+		os.Unsetenv("TRAY_TIMER_FORMAT")
+		os.Unsetenv("TRAY_SHOW_TIMER")
 	}()
 
 	cfg, err := Load()
@@ -35,6 +39,12 @@ func TestLoad_Success(t *testing.T) {
 	}
 	if cfg.JiraEmail != "test@example.com" {
 		t.Errorf("Expected test@example.com, got %s", cfg.JiraEmail)
+	}
+	if cfg.TrayTimerFormat != "hh:mm" {
+		t.Errorf("Expected hh:mm tray format, got %s", cfg.TrayTimerFormat)
+	}
+	if cfg.TrayShowTimer {
+		t.Errorf("Expected tray timer visibility to be false")
 	}
 }
 
@@ -67,6 +77,8 @@ func TestSave_WritesToConfigDir(t *testing.T) {
 		JiraBaseURL:       "https://save.atlassian.net",
 		JiraEmail:         "save@example.com",
 		JiraAPIToken:      "save-token",
+		TrayTimerFormat:   "hh:mm",
+		TrayShowTimer:     false,
 	}
 
 	if err := Save(cfg); err != nil {
@@ -84,6 +96,12 @@ func TestSave_WritesToConfigDir(t *testing.T) {
 	}
 	if envMap["CLOCKIFY_WORKSPACE_ID"] != "save-ws" {
 		t.Errorf("expected CLOCKIFY_WORKSPACE_ID=save-ws, got %q", envMap["CLOCKIFY_WORKSPACE_ID"])
+	}
+	if envMap["TRAY_TIMER_FORMAT"] != "hh:mm" {
+		t.Errorf("expected TRAY_TIMER_FORMAT=hh:mm, got %q", envMap["TRAY_TIMER_FORMAT"])
+	}
+	if envMap["TRAY_SHOW_TIMER"] != "false" {
+		t.Errorf("expected TRAY_SHOW_TIMER=false, got %q", envMap["TRAY_SHOW_TIMER"])
 	}
 }
 
@@ -146,11 +164,11 @@ func TestEnsurePersisted_SkipsWhenExists(t *testing.T) {
 	// Pre-create .env with original credentials
 	envPath := filepath.Join(tmpDir, ".env")
 	original := map[string]string{
-		"CLOCKIFY_API_KEY":    "original-key",
+		"CLOCKIFY_API_KEY":      "original-key",
 		"CLOCKIFY_WORKSPACE_ID": "original-ws",
-		"JIRA_BASE_URL":       "https://original.atlassian.net",
-		"JIRA_EMAIL":          "original@example.com",
-		"JIRA_API_TOKEN":      "original-token",
+		"JIRA_BASE_URL":         "https://original.atlassian.net",
+		"JIRA_EMAIL":            "original@example.com",
+		"JIRA_API_TOKEN":        "original-token",
 	}
 	if err := godotenv.Write(original, envPath); err != nil {
 		t.Fatalf("failed to write seed .env: %v", err)

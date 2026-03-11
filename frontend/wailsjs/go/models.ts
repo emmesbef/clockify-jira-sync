@@ -63,6 +63,8 @@ export namespace config {
 	    MockMode: boolean;
 	    AutoUpdate: boolean;
 	    BetaChannel: boolean;
+	    TrayTimerFormat: string;
+	    TrayShowTimer: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -78,6 +80,8 @@ export namespace config {
 	        this.MockMode = source["MockMode"];
 	        this.AutoUpdate = source["AutoUpdate"];
 	        this.BetaChannel = source["BetaChannel"];
+	        this.TrayTimerFormat = source["TrayTimerFormat"];
+	        this.TrayShowTimer = source["TrayShowTimer"];
 	    }
 	}
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -48,6 +49,25 @@ type Config struct {
 	MockMode          bool
 	AutoUpdate        bool
 	BetaChannel       bool
+	TrayTimerFormat   string
+	TrayShowTimer     bool
+}
+
+const (
+	trayTimerFormatHHMM   = "hh:mm"
+	trayTimerFormatHHMMSS = "hh:mm:ss"
+)
+
+// NormalizeTrayTimerFormat returns a supported tray timer format.
+func NormalizeTrayTimerFormat(format string) string {
+	switch strings.TrimSpace(format) {
+	case trayTimerFormatHHMM:
+		return trayTimerFormatHHMM
+	case trayTimerFormatHHMMSS:
+		return trayTimerFormatHHMMSS
+	default:
+		return trayTimerFormatHHMMSS
+	}
 }
 
 func Load() (*Config, error) {
@@ -66,6 +86,8 @@ func Load() (*Config, error) {
 		MockMode:          os.Getenv("MOCK_DATA") == "true",
 		AutoUpdate:        os.Getenv("AUTO_UPDATE") != "false",
 		BetaChannel:       os.Getenv("BETA_CHANNEL") == "true",
+		TrayTimerFormat:   NormalizeTrayTimerFormat(os.Getenv("TRAY_TIMER_FORMAT")),
+		TrayShowTimer:     os.Getenv("TRAY_SHOW_TIMER") != "false",
 	}
 
 	if cfg.MockMode {
@@ -126,6 +148,8 @@ func Save(cfg *Config) error {
 	envMap["JIRA_API_TOKEN"] = cfg.JiraAPIToken
 	envMap["AUTO_UPDATE"] = boolToStr(cfg.AutoUpdate)
 	envMap["BETA_CHANNEL"] = boolToStr(cfg.BetaChannel)
+	envMap["TRAY_TIMER_FORMAT"] = NormalizeTrayTimerFormat(cfg.TrayTimerFormat)
+	envMap["TRAY_SHOW_TIMER"] = boolToStr(cfg.TrayShowTimer)
 
 	return godotenv.Write(envMap, p)
 }
