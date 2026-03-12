@@ -27,6 +27,8 @@ test:
       when: never
     - if: '$CI_COMMIT_BRANCH =~ /^dist-v\d+\.\d+\.\d+$/'
       when: never
+    - if: '$CI_COMMIT_BRANCH == "dist-latest"'
+      when: never
     - when: on_success
   script:
     - cd frontend && npm ci --no-audit --no-fund && cd ..
@@ -50,6 +52,8 @@ build:
       when: never
     - if: '$CI_COMMIT_BRANCH =~ /^dist-v\d+\.\d+\.\d+$/'
       when: never
+    - if: '$CI_COMMIT_BRANCH == "dist-latest"'
+      when: never
     - when: on_success
   script:
     - cd frontend && npm ci --no-audit --no-fund && cd ..
@@ -63,6 +67,8 @@ docs:
     - if: '$CI_COMMIT_TAG'
       when: never
     - if: '$CI_COMMIT_BRANCH =~ /^dist-v\d+\.\d+\.\d+$/'
+      when: never
+    - if: '$CI_COMMIT_BRANCH == "dist-latest"'
       when: never
     - when: on_success
   script:
@@ -80,6 +86,7 @@ release_cross_platform:
   rules:
     - if: '$CI_COMMIT_TAG'
     - if: '$CI_COMMIT_BRANCH =~ /^dist-v\d+\.\d+\.\d+$/'
+    - if: '$CI_COMMIT_BRANCH == "dist-latest"'
   script:
     - |
       set -euo pipefail
@@ -87,8 +94,19 @@ release_cross_platform:
       if [[ -z "$release_tag" ]]; then
         if [[ "${CI_COMMIT_BRANCH:-}" =~ ^dist-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
           release_tag="v${BASH_REMATCH[1]}"
+        elif [[ "${CI_COMMIT_BRANCH:-}" == "dist-latest" ]]; then
+          git fetch --tags --force
+          release_tag="$(
+            git tag --sort=-version:refname \
+              | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+              | head -n 1
+          )"
+          if [[ -z "$release_tag" ]]; then
+            echo "Error: no semantic version tag found for dist-latest build." >&2
+            exit 1
+          fi
         else
-          echo "Error: release tag not resolved from CI_COMMIT_TAG or dist-vX.Y.Z branch name." >&2
+          echo "Error: release tag not resolved from CI_COMMIT_TAG, dist-vX.Y.Z, or dist-latest branch." >&2
           exit 1
         fi
       fi
@@ -148,8 +166,12 @@ release_cross_platform:
         cd release-work/windows
         zip -qj "../../release-assets/${APP_NAME}-${release_tag}-windows-amd64.zip" "${APP_NAME}.exe"
       )
+      cp "release-assets/${APP_NAME}-${release_tag}-macos-universal.zip" \
+        "release-assets/${APP_NAME}-macos-universal.zip"
+      cp "release-assets/${APP_NAME}-${release_tag}-windows-amd64.zip" \
+        "release-assets/${APP_NAME}-windows-amd64.zip"
   artifacts:
-    expire_in: 14 days
+    expire_in: never
     reports:
       dotenv: release-assets.env
     paths:
@@ -163,7 +185,6 @@ release_publish:
       artifacts: true
   rules:
     - if: '$CI_COMMIT_TAG'
-    - if: '$CI_COMMIT_BRANCH =~ /^dist-v\d+\.\d+\.\d+$/'
   before_script:
     - apk add --no-cache bash curl jq coreutils
     - chmod +x scripts/ci/publish-gitlab-release.sh
