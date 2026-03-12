@@ -3,8 +3,8 @@
 import {themes as prismThemes} from 'prism-react-renderer';
 
 const siteUrl = 'https://level-87.gitlab.io';
-const pagesBaseUrl = '/jirafy-clockwork/';
-const coverageUrl = `${siteUrl}${pagesBaseUrl}coverage/`;
+const baseUrl = '/';
+const coverageUrl = `${siteUrl}${baseUrl}coverage/`;
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -15,7 +15,7 @@ const config = {
     v4: true,
   },
   url: siteUrl,
-  baseUrl: pagesBaseUrl,
+  baseUrl,
   organizationName: 'level-87',
   projectName: 'jirafy-clockwork',
   onBrokenLinks: 'throw',

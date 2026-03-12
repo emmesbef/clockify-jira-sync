@@ -2,7 +2,7 @@
 
 [![Pipeline](https://gitlab.com/level-87/jirafy-clockwork/badges/main/pipeline.svg)](https://gitlab.com/level-87/jirafy-clockwork/-/pipelines)
 [![Latest release](https://img.shields.io/gitlab/v/release/level-87/jirafy-clockwork?include_prereleases)](https://gitlab.com/level-87/jirafy-clockwork/-/releases)
-[![Combined coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Flevel-87.gitlab.io%2Fjirafy-clockwork%2Fcoverage%2Fcombined-coverage.json&query=%24.combined.coverage_percent&suffix=%25&label=combined%20coverage)](https://level-87.gitlab.io/jirafy-clockwork/coverage/)
+[![Combined coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Flevel-87.gitlab.io%2Fcoverage%2Fcombined-coverage.json&query=%24.combined.coverage_percent&suffix=%25&label=combined%20coverage)](https://level-87.gitlab.io/coverage/)
 
 Desktop app built with Wails (Go backend + Vite frontend) to track time on Jira issues and keep Clockify/Jira worklogs in sync.
 
@@ -125,12 +125,11 @@ git push origin v1.11.0
   - Runs backend/frontend tests, combined coverage generation, build checks, docs checks/build, release packaging, and Pages deployment.
 - **Pipelines**: https://gitlab.com/level-87/jirafy-clockwork/-/pipelines
 - **GitLab Releases**: https://gitlab.com/level-87/jirafy-clockwork/-/releases
-- **GitLab Pages site**: https://level-87.gitlab.io/jirafy-clockwork/
-  - Docs home: https://level-87.gitlab.io/jirafy-clockwork/
-  - Legacy docs URL redirect: https://level-87.gitlab.io/jirafy-clockwork/docs/
-  - Coverage dashboard: https://level-87.gitlab.io/jirafy-clockwork/coverage/
-  - Combined coverage JSON (badge source): https://level-87.gitlab.io/jirafy-clockwork/coverage/combined-coverage.json
-  - Frontend LCOV report: https://level-87.gitlab.io/jirafy-clockwork/coverage/frontend/lcov-report/index.html
+- **GitLab Pages site**: https://level-87.gitlab.io/
+  - Docs home: https://level-87.gitlab.io/
+  - Coverage dashboard: https://level-87.gitlab.io/coverage/
+  - Combined coverage JSON (badge source): https://level-87.gitlab.io/coverage/combined-coverage.json
+  - Frontend LCOV report: https://level-87.gitlab.io/coverage/frontend/lcov-report/index.html
 - **Local docs workspace**: `docs-site/`
   - Standalone Docusaurus site for Markdown-based project documentation.
   - GitLab Pages publishes the Docusaurus build at the site root, while CI keeps coverage assets under `/coverage/`.
