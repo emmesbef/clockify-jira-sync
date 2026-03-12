@@ -22,6 +22,10 @@ variables:
 test:
   stage: test
   extends: .go_node_job
+  rules:
+    - if: '$CI_COMMIT_TAG'
+      when: never
+    - when: on_success
   script:
     - cd frontend && npm ci --no-audit --no-fund && cd ..
     - mkdir -p coverage
@@ -39,6 +43,10 @@ build:
   stage: build
   extends: .go_node_job
   needs: ["test"]
+  rules:
+    - if: '$CI_COMMIT_TAG'
+      when: never
+    - when: on_success
   script:
     - cd frontend && npm ci --no-audit --no-fund && cd ..
     - cd frontend && npm run build && cd ..
@@ -47,6 +55,10 @@ build:
 docs:
   stage: docs
   extends: .go_node_job
+  rules:
+    - if: '$CI_COMMIT_TAG'
+      when: never
+    - when: on_success
   script:
     - cd docs-site && npm ci --no-audit --no-fund && cd ..
     - scripts/ci/verify-docs-freshness.sh
