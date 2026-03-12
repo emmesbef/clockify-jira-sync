@@ -67,22 +67,13 @@ for file_path in "${zip_assets[@]}" "$checksums_file"; do
 done
 
 assets_links_json='[]'
-for file_name in "${uploaded_names[@]}"; do
-  assets_links_json="$(
-    jq -c \
-      --arg name "$file_name" \
-      --arg url "${download_base}/${file_name}" \
-      '. + [{name: $name, url: $url, link_type: "package"}]' \
-      <<<"$assets_links_json"
-  )"
-done
 
-add_alias_link() {
-  local alias_name="$1"
+add_release_link() {
+  local link_name="$1"
   local target_name="$2"
   assets_links_json="$(
     jq -c \
-      --arg name "$alias_name" \
+      --arg name "$link_name" \
       --arg url "${download_base}/${target_name}" \
       '. + [{name: $name, url: $url, link_type: "package"}]' \
       <<<"$assets_links_json"
@@ -94,14 +85,24 @@ windows_versioned_name="${APP_NAME}-${TAG}-windows-amd64.zip"
 checksums_versioned_name="${APP_NAME}-${TAG}-SHA256SUMS.txt"
 
 if printf '%s\n' "${uploaded_names[@]}" | grep -Fxq "$macos_versioned_name"; then
-  add_alias_link "${APP_NAME}-macos-universal.zip" "$macos_versioned_name"
+  add_release_link "${APP_NAME}-macos-universal.zip" "$macos_versioned_name"
 fi
 if printf '%s\n' "${uploaded_names[@]}" | grep -Fxq "$windows_versioned_name"; then
-  add_alias_link "${APP_NAME}-windows-amd64.zip" "$windows_versioned_name"
+  add_release_link "${APP_NAME}-windows-amd64.zip" "$windows_versioned_name"
 fi
 if printf '%s\n' "${uploaded_names[@]}" | grep -Fxq "$checksums_versioned_name"; then
-  add_alias_link "${APP_NAME}-SHA256SUMS.txt" "$checksums_versioned_name"
+  add_release_link "${APP_NAME}-SHA256SUMS.txt" "$checksums_versioned_name"
 fi
+
+for file_name in "${uploaded_names[@]}"; do
+  case "$file_name" in
+    "$macos_versioned_name" | "$windows_versioned_name" | "$checksums_versioned_name")
+      ;;
+    *)
+      add_release_link "$file_name" "$file_name"
+      ;;
+  esac
+done
 
 release_description="$(cat "$notes_file")"
 create_payload="$(
