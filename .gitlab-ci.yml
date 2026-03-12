@@ -12,7 +12,7 @@ variables:
   image: golang:1.23-bookworm
   before_script:
     - apt-get update
-    - apt-get install -y --no-install-recommends curl xz-utils ca-certificates git
+    - apt-get install -y --no-install-recommends curl xz-utils ca-certificates git zip
     - curl -fsSL https://nodejs.org/dist/v20.19.0/node-v20.19.0-linux-x64.tar.xz -o /tmp/node.tar.xz
     - tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1
     - rm -rf /var/lib/apt/lists/*
@@ -68,83 +68,69 @@ docs:
     paths:
       - docs-site/build/
 
-release_macos:
+release_cross_platform:
   stage: release
-  tags:
-    - macos
+  extends: .go_node_job
   rules:
     - if: '$CI_COMMIT_TAG'
   script:
     - |
       set -euo pipefail
-      if ! command -v go >/dev/null 2>&1; then
-        echo "Go is required on the macOS runner."
-        exit 1
-      fi
-      if ! command -v npm >/dev/null 2>&1; then
-        echo "Node.js/npm is required on the macOS runner."
-        exit 1
-      fi
+      version="${CI_COMMIT_TAG#v}"
+
       cd frontend
       npm ci --no-audit --no-fund
+      npm run build
       cd ..
-      go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
-      export PATH="$(go env GOPATH)/bin:$PATH"
-      version="${CI_COMMIT_TAG#v}"
-      python3 - "$version" <<'PY'
-      import json
-      import sys
-      from pathlib import Path
 
-      version = sys.argv[1]
-      path = Path("wails.json")
-      data = json.loads(path.read_text(encoding="utf-8"))
-      data.setdefault("info", {})["productVersion"] = version
-      path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-      PY
-      wails build -clean -platform darwin/universal -ldflags "-X main.version=${version}"
-      codesign --force --deep --sign - \
-        --entitlements build/darwin/entitlements.plist \
-        --options runtime \
-        "build/bin/${APP_NAME}.app"
-      codesign --verify --verbose "build/bin/${APP_NAME}.app"
-      mkdir -p release-assets
-      ditto -c -k --sequesterRsrc --keepParent \
-        "build/bin/${APP_NAME}.app" \
-        "release-assets/${APP_NAME}-${CI_COMMIT_TAG}-macos-universal.zip"
-  artifacts:
-    expire_in: 14 days
-    paths:
-      - release-assets/*.zip
+      rm -rf release-assets release-work
+      mkdir -p release-assets \
+        release-work/macos/jirafy-clockwork.app/Contents/MacOS \
+        release-work/macos/jirafy-clockwork.app/Contents/Resources \
+        release-work/windows
 
-release_windows:
-  stage: release
-  tags:
-    - windows
-  rules:
-    - if: '$CI_COMMIT_TAG'
-  script:
-    - |
-      $ErrorActionPreference = "Stop"
-      if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
-        throw "Go is required on the Windows runner."
-      }
-      if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-        throw "Node.js/npm is required on the Windows runner."
-      }
-      Set-Location frontend
-      npm ci --no-audit --no-fund
-      Set-Location ..
-      go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
-      $env:Path += ";" + (go env GOPATH) + "\bin"
-      $version = $env:CI_COMMIT_TAG -replace "^v",""
-      $wails = Get-Content wails.json -Raw | ConvertFrom-Json
-      $wails.info.productVersion = $version
-      $wails | ConvertTo-Json -Depth 20 | Set-Content wails.json -NoNewline
-      Add-Content wails.json "`n"
-      wails build -clean -platform windows/amd64 -ldflags "-X main.version=$version"
-      New-Item -ItemType Directory -Force -Path release-assets | Out-Null
-      Compress-Archive -Path "build/bin/*" -DestinationPath "release-assets/$env:APP_NAME-$env:CI_COMMIT_TAG-windows-amd64.zip" -Force
+      cp build/bin/jirafy-clockwork.app/Contents/Info.plist \
+        release-work/macos/jirafy-clockwork.app/Contents/Info.plist
+      cp build/bin/jirafy-clockwork.app/Contents/Resources/iconfile.icns \
+        release-work/macos/jirafy-clockwork.app/Contents/Resources/iconfile.icns
+
+      GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build \
+        -trimpath \
+        -ldflags "-X main.version=${version}" \
+        -o release-work/macos/jirafy-clockwork.app/Contents/MacOS/jirafy-clockwork-amd64 \
+        .
+      GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build \
+        -trimpath \
+        -ldflags "-X main.version=${version}" \
+        -o release-work/macos/jirafy-clockwork.app/Contents/MacOS/jirafy-clockwork-arm64 \
+        .
+
+      cat > release-work/macos/jirafy-clockwork.app/Contents/MacOS/jirafy-clockwork <<'EOF'
+      #!/bin/sh
+      set -eu
+      BIN_DIR="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
+      case "$(uname -m)" in
+        arm64|aarch64) exec "${BIN_DIR}/jirafy-clockwork-arm64" "$@" ;;
+        x86_64|amd64) exec "${BIN_DIR}/jirafy-clockwork-amd64" "$@" ;;
+        *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
+      esac
+      EOF
+      chmod +x release-work/macos/jirafy-clockwork.app/Contents/MacOS/jirafy-clockwork*
+
+      (
+        cd release-work/macos
+        zip -qry "../../release-assets/${APP_NAME}-${CI_COMMIT_TAG}-macos-universal.zip" "jirafy-clockwork.app"
+      )
+
+      GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build \
+        -trimpath \
+        -ldflags "-X main.version=${version}" \
+        -o "release-work/windows/${APP_NAME}.exe" \
+        .
+      (
+        cd release-work/windows
+        zip -qj "../../release-assets/${APP_NAME}-${CI_COMMIT_TAG}-windows-amd64.zip" "${APP_NAME}.exe"
+      )
   artifacts:
     expire_in: 14 days
     paths:
@@ -154,9 +140,7 @@ release_publish:
   stage: release
   image: alpine:3.20
   needs:
-    - job: release_macos
-      artifacts: true
-    - job: release_windows
+    - job: release_cross_platform
       artifacts: true
   rules:
     - if: '$CI_COMMIT_TAG'
