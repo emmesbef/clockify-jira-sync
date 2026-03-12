@@ -111,6 +111,7 @@ release_cross_platform:
         fi
       fi
       version="${release_tag#v}"
+      macos_bundle_name="JiraFy Clockwork.app"
       echo "RELEASE_TAG=${release_tag}" > release-assets.env
 
       cd frontend
@@ -120,27 +121,27 @@ release_cross_platform:
 
       rm -rf release-assets release-work
       mkdir -p release-assets \
-        release-work/macos/jirafy-clockwork.app/Contents/MacOS \
-        release-work/macos/jirafy-clockwork.app/Contents/Resources \
+        "release-work/macos/${macos_bundle_name}/Contents/MacOS" \
+        "release-work/macos/${macos_bundle_name}/Contents/Resources" \
         release-work/windows
 
       cp build/bin/jirafy-clockwork.app/Contents/Info.plist \
-        release-work/macos/jirafy-clockwork.app/Contents/Info.plist
+        "release-work/macos/${macos_bundle_name}/Contents/Info.plist"
       cp build/bin/jirafy-clockwork.app/Contents/Resources/iconfile.icns \
-        release-work/macos/jirafy-clockwork.app/Contents/Resources/iconfile.icns
+        "release-work/macos/${macos_bundle_name}/Contents/Resources/iconfile.icns"
 
       GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build \
         -trimpath \
         -ldflags "-X main.version=${version}" \
-        -o release-work/macos/jirafy-clockwork.app/Contents/MacOS/jirafy-clockwork-amd64 \
+        -o "release-work/macos/${macos_bundle_name}/Contents/MacOS/jirafy-clockwork-amd64" \
         .
       GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build \
         -trimpath \
         -ldflags "-X main.version=${version}" \
-        -o release-work/macos/jirafy-clockwork.app/Contents/MacOS/jirafy-clockwork-arm64 \
+        -o "release-work/macos/${macos_bundle_name}/Contents/MacOS/jirafy-clockwork-arm64" \
         .
 
-      cat > release-work/macos/jirafy-clockwork.app/Contents/MacOS/jirafy-clockwork <<'EOF'
+      cat > "release-work/macos/${macos_bundle_name}/Contents/MacOS/jirafy-clockwork" <<'EOF'
       #!/bin/sh
       set -eu
       BIN_DIR="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
@@ -150,11 +151,11 @@ release_cross_platform:
         *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
       esac
       EOF
-      chmod +x release-work/macos/jirafy-clockwork.app/Contents/MacOS/jirafy-clockwork*
+      chmod +x "release-work/macos/${macos_bundle_name}/Contents/MacOS/jirafy-clockwork"*
 
       (
         cd release-work/macos
-        zip -qry "../../release-assets/${APP_NAME}-${release_tag}-macos-universal.zip" "jirafy-clockwork.app"
+        zip -qry "../../release-assets/${APP_NAME}-${release_tag}-macos-universal.zip" "${macos_bundle_name}"
       )
 
       GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build \
