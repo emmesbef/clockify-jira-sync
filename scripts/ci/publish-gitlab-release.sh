@@ -3,7 +3,7 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-APP_NAME="${APP_NAME:-clockify-jira-sync}"
+APP_NAME="${APP_NAME:-jirafy-clockwork}"
 ASSETS_DIR="${ASSETS_DIR:-release-assets}"
 TAG="${CI_COMMIT_TAG:-}"
 API_BASE="${CI_API_V4_URL:-}"

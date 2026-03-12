@@ -14,12 +14,12 @@ import (
 	"strings"
 	"time"
 
-	"clockify-jira-sync/internal/models"
+	"jirafy-clockwork/internal/models"
 )
 
 const (
 	defaultGitLabAPI = "https://gitlab.com/api/v4"
-	projectPath      = "level-87/clockify-jira-sync"
+	projectPath      = "level-87/jirafy-clockwork"
 )
 
 // Updater checks for and applies application updates from GitLab Releases.
@@ -328,7 +328,7 @@ func extractBinary(zipPath, destPath string) error {
 			continue
 		}
 		name := filepath.Base(f.Name)
-		if name == "clockify-jira-sync" || name == "clockify-jira-sync.exe" {
+		if name == "jirafy-clockwork" || name == "jirafy-clockwork.exe" {
 			rc, err := f.Open()
 			if err != nil {
 				return err

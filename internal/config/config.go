@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +13,12 @@ import (
 // configDirOverride allows tests to redirect config storage to a temp directory.
 var configDirOverride string
 
+const (
+	configDirName       = "jirafy-clockwork"
+	legacyConfigDirName = "clockify-jira-sync"
+	configFileName      = ".env"
+)
+
 // SetConfigDir overrides the config directory (for tests only).
 func SetConfigDir(dir string) {
 	configDirOverride = dir
@@ -19,16 +26,23 @@ func SetConfigDir(dir string) {
 
 // ConfigDir returns the directory used for storing .env configuration.
 // Uses os.UserConfigDir (~/Library/Application Support on macOS, %AppData% on
-// Windows) with a clockify-jira-sync subdirectory.
+// Windows) with a jirafy-clockwork subdirectory.
 func ConfigDir() (string, error) {
 	if configDirOverride != "" {
 		return configDirOverride, nil
 	}
+
 	base, err := os.UserConfigDir()
 	if err != nil {
 		return "", fmt.Errorf("cannot determine config directory: %w", err)
 	}
-	return filepath.Join(base, "clockify-jira-sync"), nil
+
+	newDir := filepath.Join(base, configDirName)
+	legacyDir := filepath.Join(base, legacyConfigDirName)
+	if err := migrateLegacyConfigFile(legacyDir, newDir); err != nil {
+		return "", fmt.Errorf("cannot migrate config directory: %w", err)
+	}
+	return newDir, nil
 }
 
 // FilePath returns the full path to the .env config file.
@@ -37,7 +51,7 @@ func FilePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, ".env"), nil
+	return filepath.Join(dir, configFileName), nil
 }
 
 type Config struct {
@@ -72,10 +86,16 @@ func NormalizeTrayTimerFormat(format string) string {
 
 func Load() (*Config, error) {
 	// Try user config dir first, fall back to local .env for development
-	if p, err := FilePath(); err == nil {
-		_ = godotenv.Load(p)
+	p, err := FilePath()
+	if err != nil {
+		return nil, fmt.Errorf("cannot resolve config file path: %w", err)
 	}
-	_ = godotenv.Load() // local .env (dev); vars already set above win
+	if err := godotenv.Load(p); err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("cannot load config from %q: %w", p, err)
+	}
+	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("cannot load local .env: %w", err)
+	}
 
 	cfg := &Config{
 		ClockifyAPIKey:    os.Getenv("CLOCKIFY_API_KEY"),
@@ -138,6 +158,9 @@ func Save(cfg *Config) error {
 
 	envMap, err := godotenv.Read(p)
 	if err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("cannot read config file %q: %w", p, err)
+		}
 		envMap = make(map[string]string)
 	}
 
@@ -151,7 +174,10 @@ func Save(cfg *Config) error {
 	envMap["TRAY_TIMER_FORMAT"] = NormalizeTrayTimerFormat(cfg.TrayTimerFormat)
 	envMap["TRAY_SHOW_TIMER"] = boolToStr(cfg.TrayShowTimer)
 
-	return godotenv.Write(envMap, p)
+	if err := godotenv.Write(envMap, p); err != nil {
+		return fmt.Errorf("cannot write config file %q: %w", p, err)
+	}
+	return nil
 }
 
 // Save is a convenience method that delegates to the package-level Save function.
@@ -169,17 +195,89 @@ func boolToStr(b bool) string {
 // EnsurePersisted checks whether the config dir .env file exists.
 // If missing, it creates it from the current in-memory config.
 // If the file already exists, it is left untouched — credentials are never overwritten.
-// Returns true if a new file was created (migration happened).
+// Returns true if a new file was created by this call.
 func EnsurePersisted(cfg *Config) (bool, error) {
 	p, err := FilePath()
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("cannot resolve config file path: %w", err)
 	}
 	if _, statErr := os.Stat(p); statErr != nil {
 		if !os.IsNotExist(statErr) {
-			return false, statErr
+			return false, fmt.Errorf("cannot stat config file %q: %w", p, statErr)
 		}
-		return true, Save(cfg)
+		if err := Save(cfg); err != nil {
+			return false, fmt.Errorf("cannot persist config file %q: %w", p, err)
+		}
+		return true, nil
 	}
 	return false, nil // file exists — nothing to do
+}
+
+func migrateLegacyConfigFile(legacyDir, newDir string) error {
+	legacyPath := filepath.Join(legacyDir, configFileName)
+	newPath := filepath.Join(newDir, configFileName)
+
+	if _, err := os.Stat(newPath); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("cannot stat config file %q: %w", newPath, err)
+	}
+
+	info, err := os.Stat(legacyPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("cannot stat legacy config file %q: %w", legacyPath, err)
+	}
+	if info.IsDir() {
+		return fmt.Errorf("legacy config file path is a directory: %q", legacyPath)
+	}
+
+	if err := os.MkdirAll(newDir, 0o700); err != nil {
+		return fmt.Errorf("cannot create config directory %q: %w", newDir, err)
+	}
+
+	if err := copyFileNoOverwrite(legacyPath, newPath, info.Mode().Perm()); err != nil {
+		return fmt.Errorf("cannot migrate legacy config file to %q: %w", newPath, err)
+	}
+	return nil
+}
+
+func copyFileNoOverwrite(srcPath, dstPath string, mode os.FileMode) error {
+	src, err := os.Open(srcPath)
+	if err != nil {
+		return fmt.Errorf("cannot open source file %q: %w", srcPath, err)
+	}
+	defer src.Close()
+
+	dst, err := os.OpenFile(dstPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
+	if err != nil {
+		if os.IsExist(err) {
+			return nil
+		}
+		return fmt.Errorf("cannot create destination file %q: %w", dstPath, err)
+	}
+	wroteFile := false
+	defer func() {
+		if dst != nil {
+			_ = dst.Close()
+		}
+		if !wroteFile {
+			_ = os.Remove(dstPath)
+		}
+	}()
+
+	if _, err := io.Copy(dst, src); err != nil {
+		return fmt.Errorf("cannot copy file content: %w", err)
+	}
+	if err := dst.Sync(); err != nil {
+		return fmt.Errorf("cannot sync destination file: %w", err)
+	}
+	if err := dst.Close(); err != nil {
+		return fmt.Errorf("cannot close destination file %q: %w", dstPath, err)
+	}
+	dst = nil
+	wroteFile = true
+	return nil
 }

@@ -16,13 +16,13 @@ import (
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"clockify-jira-sync/internal/clockify"
-	"clockify-jira-sync/internal/config"
-	"clockify-jira-sync/internal/detector"
-	"clockify-jira-sync/internal/jira"
-	"clockify-jira-sync/internal/models"
-	"clockify-jira-sync/internal/tray"
-	"clockify-jira-sync/internal/updater"
+	"jirafy-clockwork/internal/clockify"
+	"jirafy-clockwork/internal/config"
+	"jirafy-clockwork/internal/detector"
+	"jirafy-clockwork/internal/jira"
+	"jirafy-clockwork/internal/models"
+	"jirafy-clockwork/internal/tray"
+	"jirafy-clockwork/internal/updater"
 )
 
 // App is the main application struct exposed to the Wails frontend

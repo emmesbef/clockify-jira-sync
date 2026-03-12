@@ -10,9 +10,9 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 
-	"clockify-jira-sync/internal/app"
-	"clockify-jira-sync/internal/config"
-	"clockify-jira-sync/internal/mockserver"
+	"jirafy-clockwork/internal/app"
+	"jirafy-clockwork/internal/config"
+	"jirafy-clockwork/internal/mockserver"
 )
 
 // version is set at build time via -ldflags "-X main.version=..."

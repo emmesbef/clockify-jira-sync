@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"clockify-jira-sync/internal/models"
+	"jirafy-clockwork/internal/models"
 )
 
 // Client wraps the Clockify REST API

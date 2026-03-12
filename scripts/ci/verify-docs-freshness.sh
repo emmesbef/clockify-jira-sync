@@ -24,7 +24,7 @@ fi
 
 required_patterns=(
   '^# JiraFy Clockwork'
-  'gitlab\.com/level-87/clockify-jira-sync/badges/main/pipeline\.svg'
+  'gitlab\.com/level-87/jirafy-clockwork/badges/main/pipeline\.svg'
   'coverage/combined-coverage.json'
   '^## What it does'
   '^## Development, build, and test commands'

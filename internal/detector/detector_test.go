@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"clockify-jira-sync/internal/models"
+	"jirafy-clockwork/internal/models"
 )
 
 func TestExtractTicketKey(t *testing.T) {

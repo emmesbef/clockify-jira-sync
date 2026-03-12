@@ -120,6 +120,148 @@ func TestFilePath_ReturnsExpectedPath(t *testing.T) {
 	}
 }
 
+func TestConfigDir_DefaultsToNewDirectoryName(t *testing.T) {
+	SetConfigDir("")
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	base, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatalf("failed to resolve user config dir: %v", err)
+	}
+
+	dir, err := ConfigDir()
+	if err != nil {
+		t.Fatalf("ConfigDir returned error: %v", err)
+	}
+
+	expected := filepath.Join(base, configDirName)
+	if dir != expected {
+		t.Fatalf("expected config dir %q, got %q", expected, dir)
+	}
+}
+
+func TestConfigDir_MigratesLegacyEnvFile(t *testing.T) {
+	SetConfigDir("")
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	base, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatalf("failed to resolve user config dir: %v", err)
+	}
+
+	legacyDir := filepath.Join(base, legacyConfigDirName)
+	newDir := filepath.Join(base, configDirName)
+	legacyPath := filepath.Join(legacyDir, configFileName)
+	newPath := filepath.Join(newDir, configFileName)
+
+	if err := os.MkdirAll(legacyDir, 0o700); err != nil {
+		t.Fatalf("failed to create legacy config dir: %v", err)
+	}
+
+	const legacyEnv = "CLOCKIFY_API_KEY=legacy-key\nJIRA_EMAIL=legacy@example.com\n"
+	if err := os.WriteFile(legacyPath, []byte(legacyEnv), 0o600); err != nil {
+		t.Fatalf("failed to write legacy config file: %v", err)
+	}
+
+	dir, err := ConfigDir()
+	if err != nil {
+		t.Fatalf("ConfigDir returned error: %v", err)
+	}
+	if dir != newDir {
+		t.Fatalf("expected migrated config dir %q, got %q", newDir, dir)
+	}
+
+	got, err := os.ReadFile(newPath)
+	if err != nil {
+		t.Fatalf("failed to read migrated config file: %v", err)
+	}
+	if string(got) != legacyEnv {
+		t.Fatalf("expected migrated content %q, got %q", legacyEnv, string(got))
+	}
+}
+
+func TestConfigDir_DoesNotOverwriteNewEnvDuringMigration(t *testing.T) {
+	SetConfigDir("")
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	base, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatalf("failed to resolve user config dir: %v", err)
+	}
+
+	legacyDir := filepath.Join(base, legacyConfigDirName)
+	newDir := filepath.Join(base, configDirName)
+	legacyPath := filepath.Join(legacyDir, configFileName)
+	newPath := filepath.Join(newDir, configFileName)
+
+	if err := os.MkdirAll(legacyDir, 0o700); err != nil {
+		t.Fatalf("failed to create legacy config dir: %v", err)
+	}
+	if err := os.MkdirAll(newDir, 0o700); err != nil {
+		t.Fatalf("failed to create new config dir: %v", err)
+	}
+
+	if err := os.WriteFile(legacyPath, []byte("CLOCKIFY_API_KEY=legacy-key\n"), 0o600); err != nil {
+		t.Fatalf("failed to write legacy config file: %v", err)
+	}
+	if err := os.WriteFile(newPath, []byte("CLOCKIFY_API_KEY=new-key\n"), 0o600); err != nil {
+		t.Fatalf("failed to write new config file: %v", err)
+	}
+
+	if _, err := ConfigDir(); err != nil {
+		t.Fatalf("ConfigDir returned error: %v", err)
+	}
+
+	envMap, err := godotenv.Read(newPath)
+	if err != nil {
+		t.Fatalf("failed to read new config file: %v", err)
+	}
+	if envMap["CLOCKIFY_API_KEY"] != "new-key" {
+		t.Fatalf("expected new config file to be preserved, got %q", envMap["CLOCKIFY_API_KEY"])
+	}
+}
+
+func TestConfigDir_OverrideSkipsMigration(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	base, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatalf("failed to resolve user config dir: %v", err)
+	}
+	legacyDir := filepath.Join(base, legacyConfigDirName)
+	newPath := filepath.Join(base, configDirName, configFileName)
+
+	if err := os.MkdirAll(legacyDir, 0o700); err != nil {
+		t.Fatalf("failed to create legacy config dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(legacyDir, configFileName), []byte("CLOCKIFY_API_KEY=legacy-key\n"), 0o600); err != nil {
+		t.Fatalf("failed to write legacy config file: %v", err)
+	}
+
+	overrideDir := t.TempDir()
+	SetConfigDir(overrideDir)
+	defer SetConfigDir("")
+
+	dir, err := ConfigDir()
+	if err != nil {
+		t.Fatalf("ConfigDir returned error: %v", err)
+	}
+	if dir != overrideDir {
+		t.Fatalf("expected override dir %q, got %q", overrideDir, dir)
+	}
+
+	if _, err := os.Stat(newPath); !os.IsNotExist(err) {
+		t.Fatalf("expected migration to be skipped when override is set, got stat err: %v", err)
+	}
+}
+
 func TestEnsurePersisted_CreatesWhenMissing(t *testing.T) {
 	tmpDir := t.TempDir()
 	SetConfigDir(tmpDir)

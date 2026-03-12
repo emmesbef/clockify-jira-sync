@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"testing"
 
-	"clockify-jira-sync/internal/config"
+	"jirafy-clockwork/internal/config"
 )
 
 func TestMacAppBundlePath(t *testing.T) {
@@ -17,12 +17,12 @@ func TestMacAppBundlePath(t *testing.T) {
 	}{
 		{
 			name: "bundle executable path",
-			in:   "/Applications/Clockify Jira Sync.app/Contents/MacOS/clockify-jira-sync",
-			want: "/Applications/Clockify Jira Sync.app",
+			in:   "/Applications/JiraFy Clockwork.app/Contents/MacOS/jirafy-clockwork",
+			want: "/Applications/JiraFy Clockwork.app",
 		},
 		{
 			name: "non bundle path",
-			in:   "/usr/local/bin/clockify-jira-sync",
+			in:   "/usr/local/bin/jirafy-clockwork",
 			want: "",
 		},
 	}
@@ -52,7 +52,7 @@ func TestRelaunchExecutable_CommandSelection(t *testing.T) {
 	}
 
 	if runtime.GOOS == "darwin" {
-		exePath := "/Applications/Clockify Jira Sync.app/Contents/MacOS/clockify-jira-sync"
+		exePath := "/Applications/JiraFy Clockwork.app/Contents/MacOS/jirafy-clockwork"
 		if err := relaunchExecutable(exePath); err != nil {
 			t.Fatalf("relaunchExecutable returned error: %v", err)
 		}
@@ -62,14 +62,14 @@ func TestRelaunchExecutable_CommandSelection(t *testing.T) {
 		if got[0].name != "open" {
 			t.Fatalf("expected relaunch command 'open', got %q", got[0].name)
 		}
-		wantArgs := []string{"-n", "/Applications/Clockify Jira Sync.app"}
+		wantArgs := []string{"-n", "/Applications/JiraFy Clockwork.app"}
 		if !reflect.DeepEqual(got[0].args, wantArgs) {
 			t.Fatalf("expected args %v, got %v", wantArgs, got[0].args)
 		}
 		return
 	}
 
-	exePath := "/usr/local/bin/clockify-jira-sync"
+	exePath := "/usr/local/bin/jirafy-clockwork"
 	if err := relaunchExecutable(exePath); err != nil {
 		t.Fatalf("relaunchExecutable returned error: %v", err)
 	}

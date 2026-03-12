@@ -1,4 +1,4 @@
-module clockify-jira-sync
+module jirafy-clockwork
 
 go 1.23
 

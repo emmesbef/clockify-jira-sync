@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"clockify-jira-sync/internal/models"
+	"jirafy-clockwork/internal/models"
 )
 
 // jiraKeyPattern matches Jira ticket keys like PROJ-123

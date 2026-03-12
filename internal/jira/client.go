@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"clockify-jira-sync/internal/models"
+	"jirafy-clockwork/internal/models"
 )
 
 // escapeJQLText escapes Lucene special characters for the JQL ~ operator.

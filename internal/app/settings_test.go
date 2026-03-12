@@ -7,9 +7,9 @@ import (
 
 	"github.com/joho/godotenv"
 
-	"clockify-jira-sync/internal/config"
-	"clockify-jira-sync/internal/mockserver"
-	"clockify-jira-sync/internal/models"
+	"jirafy-clockwork/internal/config"
+	"jirafy-clockwork/internal/mockserver"
+	"jirafy-clockwork/internal/models"
 )
 
 func TestSaveConfigPersistsWorkspace(t *testing.T) {
@@ -199,6 +199,56 @@ func TestEnsureConfigPersistedExistingFile(t *testing.T) {
 	expectedPath := filepath.Join(tmpDir, ".env")
 	if result.Path != expectedPath {
 		t.Fatalf("expected Path to be %q, got %q", expectedPath, result.Path)
+	}
+}
+
+func TestEnsureConfigPersistedMigratesLegacyConfigPath(t *testing.T) {
+	config.SetConfigDir("")
+	defer config.SetConfigDir("")
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	base, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatalf("failed to resolve user config dir: %v", err)
+	}
+
+	legacyPath := filepath.Join(base, "clockify-jira-sync", ".env")
+	newPath := filepath.Join(base, "jirafy-clockwork", ".env")
+
+	if err := os.MkdirAll(filepath.Dir(legacyPath), 0o700); err != nil {
+		t.Fatalf("failed to create legacy config dir: %v", err)
+	}
+	if err := godotenv.Write(map[string]string{
+		"CLOCKIFY_API_KEY": "legacy-key",
+		"JIRA_EMAIL":       "legacy@example.com",
+	}, legacyPath); err != nil {
+		t.Fatalf("failed to write legacy config: %v", err)
+	}
+
+	a := NewApp(&config.Config{
+		ClockifyAPIKey:    "new-key",
+		ClockifyWorkspace: "new-workspace",
+		JiraBaseURL:       "https://example.atlassian.net",
+		JiraEmail:         "new@example.com",
+		JiraAPIToken:      "new-token",
+	}, "test")
+
+	result := a.EnsureConfigPersisted()
+	if result.Created {
+		t.Fatalf("expected Created to be false after migration copied legacy config")
+	}
+	if result.Path != newPath {
+		t.Fatalf("expected migrated Path %q, got %q", newPath, result.Path)
+	}
+
+	envMap, err := godotenv.Read(newPath)
+	if err != nil {
+		t.Fatalf("failed to read migrated config: %v", err)
+	}
+	if envMap["CLOCKIFY_API_KEY"] != "legacy-key" {
+		t.Fatalf("expected migrated CLOCKIFY_API_KEY=legacy-key, got %q", envMap["CLOCKIFY_API_KEY"])
 	}
 }
 

@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"clockify-jira-sync/internal/config"
-	"clockify-jira-sync/internal/models"
+	"jirafy-clockwork/internal/config"
+	"jirafy-clockwork/internal/models"
 )
 
 // ADF types for parsing Jira v3 worklog comments in test mocks

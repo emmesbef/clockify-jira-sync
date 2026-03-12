@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"clockify-jira-sync/internal/clockify"
-	"clockify-jira-sync/internal/jira"
+	"jirafy-clockwork/internal/clockify"
+	"jirafy-clockwork/internal/jira"
 )
 
 func TestStartServesJiraEndpoints(t *testing.T) {

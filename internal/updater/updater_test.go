@@ -76,8 +76,8 @@ func TestCheckForUpdate_NewerAvailable(t *testing.T) {
 			ReleasedAt:  "2026-01-01T12:00:00Z",
 			Assets: gitlabReleaseAsset{
 				Links: []gitlabAssetLink{
-					{Name: "clockify-jira-sync-v2.0.0-macos-universal.zip", URL: "https://example.com/mac.zip"},
-					{Name: "clockify-jira-sync-v2.0.0-windows-amd64.zip", URL: "https://example.com/win.zip"},
+					{Name: "jirafy-clockwork-v2.0.0-macos-universal.zip", URL: "https://example.com/mac.zip"},
+					{Name: "jirafy-clockwork-v2.0.0-windows-amd64.zip", URL: "https://example.com/win.zip"},
 				},
 			},
 		},
@@ -153,7 +153,7 @@ func TestCheckForUpdate_BetaIncluded(t *testing.T) {
 			TagName: "v2.0.0-beta.1",
 			Assets: gitlabReleaseAsset{
 				Links: []gitlabAssetLink{
-					{Name: "clockify-jira-sync-v2.0.0-beta.1-macos-universal.zip", URL: "https://example.com/beta.zip"},
+					{Name: "jirafy-clockwork-v2.0.0-beta.1-macos-universal.zip", URL: "https://example.com/beta.zip"},
 				},
 			},
 		},
@@ -184,7 +184,7 @@ func TestGetLatestStable(t *testing.T) {
 			TagName: "v1.9.0",
 			Assets: gitlabReleaseAsset{
 				Links: []gitlabAssetLink{
-					{Name: "clockify-jira-sync-v1.9.0-macos-universal.zip", URL: "https://example.com/stable.zip"},
+					{Name: "jirafy-clockwork-v1.9.0-macos-universal.zip", URL: "https://example.com/stable.zip"},
 				},
 			},
 		},

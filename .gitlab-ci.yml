@@ -6,7 +6,7 @@ stages:
   - deploy
 
 variables:
-  APP_NAME: "clockify-jira-sync"
+  APP_NAME: "jirafy-clockwork"
 
 .go_node_job:
   image: golang:1.23-bookworm
@@ -46,13 +46,9 @@ build:
 
 docs:
   stage: docs
-  image: node:20-bookworm
-  before_script:
-    - apt-get update
-    - apt-get install -y --no-install-recommends bash git ca-certificates
-    - rm -rf /var/lib/apt/lists/*
-    - cd docs-site && npm ci --no-audit --no-fund && cd ..
+  extends: .go_node_job
   script:
+    - cd docs-site && npm ci --no-audit --no-fund && cd ..
     - scripts/ci/verify-docs-freshness.sh
     - cd docs-site && npm run build
   artifacts:
@@ -98,11 +94,11 @@ release_macos:
       codesign --force --deep --sign - \
         --entitlements build/darwin/entitlements.plist \
         --options runtime \
-        build/bin/clockify-jira-sync.app
-      codesign --verify --verbose build/bin/clockify-jira-sync.app
+        "build/bin/${APP_NAME}.app"
+      codesign --verify --verbose "build/bin/${APP_NAME}.app"
       mkdir -p release-assets
       ditto -c -k --sequesterRsrc --keepParent \
-        build/bin/clockify-jira-sync.app \
+        "build/bin/${APP_NAME}.app" \
         "release-assets/${APP_NAME}-${CI_COMMIT_TAG}-macos-universal.zip"
   artifacts:
     expire_in: 14 days

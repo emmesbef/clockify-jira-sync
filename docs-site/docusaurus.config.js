@@ -3,7 +3,7 @@
 import {themes as prismThemes} from 'prism-react-renderer';
 
 const siteUrl = 'https://level-87.gitlab.io';
-const pagesBaseUrl = '/clockify-jira-sync/';
+const pagesBaseUrl = '/jirafy-clockwork/';
 const coverageUrl = `${siteUrl}${pagesBaseUrl}coverage/`;
 
 /** @type {import('@docusaurus/types').Config} */
@@ -17,7 +17,7 @@ const config = {
   url: siteUrl,
   baseUrl: pagesBaseUrl,
   organizationName: 'level-87',
-  projectName: 'clockify-jira-sync',
+  projectName: 'jirafy-clockwork',
   onBrokenLinks: 'throw',
   markdown: {
     hooks: {
@@ -36,7 +36,7 @@ const config = {
         docs: {
           routeBasePath: '/',
           sidebarPath: './sidebars.js',
-          editUrl: 'https://gitlab.com/level-87/clockify-jira-sync/-/tree/main/docs-site/',
+          editUrl: 'https://gitlab.com/level-87/jirafy-clockwork/-/tree/main/docs-site/',
         },
         blog: false,
         theme: {
@@ -66,7 +66,7 @@ const config = {
             position: 'left',
           },
           {
-            href: 'https://gitlab.com/level-87/clockify-jira-sync',
+            href: 'https://gitlab.com/level-87/jirafy-clockwork',
             label: 'GitLab',
             position: 'right',
           },
@@ -101,15 +101,15 @@ const config = {
             items: [
               {
                 label: 'Repository',
-                href: 'https://gitlab.com/level-87/clockify-jira-sync',
+                href: 'https://gitlab.com/level-87/jirafy-clockwork',
               },
               {
                 label: 'Issues',
-                href: 'https://gitlab.com/level-87/clockify-jira-sync/-/issues',
+                href: 'https://gitlab.com/level-87/jirafy-clockwork/-/issues',
               },
               {
                 label: 'GitLab Releases',
-                href: 'https://gitlab.com/level-87/clockify-jira-sync/-/releases',
+                href: 'https://gitlab.com/level-87/jirafy-clockwork/-/releases',
               },
             ],
           },
@@ -118,7 +118,7 @@ const config = {
             items: [
               {
                 label: 'CI pipelines',
-                href: 'https://gitlab.com/level-87/clockify-jira-sync/-/pipelines',
+                href: 'https://gitlab.com/level-87/jirafy-clockwork/-/pipelines',
               },
               {
                 label: 'Coverage dashboard',
@@ -126,7 +126,7 @@ const config = {
               },
               {
                 label: 'Release tags',
-                href: 'https://gitlab.com/level-87/clockify-jira-sync/-/tags',
+                href: 'https://gitlab.com/level-87/jirafy-clockwork/-/tags',
               },
             ],
           },
