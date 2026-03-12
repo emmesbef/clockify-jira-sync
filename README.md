@@ -1,25 +1,18 @@
-# Clockify ↔ Jira Time Sync
+# JiraFy Clockwork
 
-[![CI](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/ci.yml/badge.svg)](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/ci.yml)
-[![Release](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/release-please.yml/badge.svg)](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/release-please.yml)
-[![CodeQL](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/codeql.yml/badge.svg)](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/codeql.yml)
-[![Combined coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Femmesbef.github.io%2Fclockify-jira-sync%2Fcoverage%2Fcombined-coverage.json&query=%24.combined.coverage_percent&suffix=%25&label=combined%20coverage)](https://emmesbef.github.io/clockify-jira-sync/coverage/)
+[![Pipeline](https://gitlab.com/level-87/clockify-jira-sync/badges/main/pipeline.svg)](https://gitlab.com/level-87/clockify-jira-sync/-/pipelines)
+[![Latest release](https://img.shields.io/gitlab/v/release/level-87/clockify-jira-sync?include_prereleases)](https://gitlab.com/level-87/clockify-jira-sync/-/releases)
+[![Combined coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Flevel-87.gitlab.io%2Fclockify-jira-sync%2Fcoverage%2Fcombined-coverage.json&query=%24.combined.coverage_percent&suffix=%25&label=combined%20coverage)](https://level-87.gitlab.io/clockify-jira-sync/coverage/)
 
 Desktop app built with Wails (Go backend + Vite frontend) to track time on Jira issues and keep Clockify/Jira worklogs in sync.
 
+The repository slug and technical identifiers remain `clockify-jira-sync` for compatibility, while user-facing branding uses **JiraFy Clockwork**.
+
 ## Installation
 
-Download the latest release for your platform from [GitHub Releases](https://github.com/emmesbef/clockify-jira-sync/releases).
+Download the latest release for your platform from [GitLab Releases](https://gitlab.com/level-87/clockify-jira-sync/-/releases).
 
 ### macOS
-
-**Recommended — via Homebrew** (no Gatekeeper warning):
-
-```bash
-brew install --cask emmesbef/tap/clockify-jira-sync
-```
-
-**Manual download:**
 
 1. Download the `*-macos-universal.zip` file and unzip it.
 2. On first launch, macOS Gatekeeper will ask for confirmation since the app is not notarized:
@@ -47,7 +40,7 @@ brew install --cask emmesbef/tap/clockify-jira-sync
 
 - Go `1.23+`
 - Node.js `20+` and npm
-- Wails CLI v2 (CI uses `github.com/wailsapp/wails/v2/cmd/wails@v2.11.0`)
+- Wails CLI v2 (CI installs `github.com/wailsapp/wails/v2/cmd/wails@v2.11.0`)
 
 ### Configure integrations
 
@@ -109,31 +102,29 @@ wails build
 
 ## Release versioning
 
-- Release Please watches `main` and opens/updates release PRs from Conventional Commits.
-- Use `fix:` for patch releases, `feat:` for minor releases, and `feat!:` / `BREAKING CHANGE:` for major releases.
-- Managed version fields include `wails.json` (`info.productVersion`), `frontend/package.json`, `frontend/package-lock.json`, `docs-site/package.json`, and `docs-site/package-lock.json`.
-- When a release PR is merged, Release Please creates the version tag/GitHub Release and then runs the release workflow to attach macOS and Windows artifacts.
+- Releases are tag-driven in GitLab CI (`v*` tags).
+- Create and push a tag to trigger release packaging:
 
-> **Release Please auth:** The `release-please.yml` workflow needs permission to create pull requests. You must enable **one** of these options:
->
-> 1. **Recommended:** Go to **Settings → Actions → General → Workflow permissions** and check **"Allow GitHub Actions to create and approve pull requests"**
-> 2. **Alternative:** Create a Personal Access Token with `contents:write`, `issues:write`, and `pull-requests:write` scopes, then add it as a repository secret named `RELEASE_PLEASE_TOKEN`
+```bash
+git tag v1.11.0
+git push origin v1.11.0
+```
+
+- The release pipeline builds macOS and Windows assets, generates a `SHA256SUMS` file, uploads assets to GitLab Package Registry, and publishes/updates the matching GitLab Release.
+- Optional `GITLAB_TOKEN` (API scope) can be provided in CI variables to create/update releases when job-token restrictions are enabled.
 
 ## CI / release / docs pages overview
 
-- **CI workflow**: https://github.com/emmesbef/clockify-jira-sync/actions/workflows/ci.yml
-  - Runs docs freshness checks, backend/frontend tests, combined coverage generation, and build checks.
-- **Release Please workflow**: https://github.com/emmesbef/clockify-jira-sync/actions/workflows/release-please.yml
-  - Opens release PRs from Conventional Commits, creates version tags/releases, and invokes the artifact publishing workflow when a release is cut.
-- **Release workflow**: https://github.com/emmesbef/clockify-jira-sync/actions/workflows/release.yml
-  - Reusable/manual workflow that builds macOS and Windows artifacts for a release tag and uploads them to the matching GitHub Release.
-- **GitHub Releases**: https://github.com/emmesbef/clockify-jira-sync/releases
-- **GitHub Pages site**: https://emmesbef.github.io/clockify-jira-sync/
-  - Docs home: https://emmesbef.github.io/clockify-jira-sync/
-  - Legacy docs URL redirect: https://emmesbef.github.io/clockify-jira-sync/docs/
-  - Coverage dashboard: https://emmesbef.github.io/clockify-jira-sync/coverage/
-  - Combined coverage JSON (badge source): https://emmesbef.github.io/clockify-jira-sync/coverage/combined-coverage.json
-  - Frontend LCOV report: https://emmesbef.github.io/clockify-jira-sync/coverage/frontend/lcov-report/index.html
+- **GitLab CI config**: [`/.gitlab-ci.yml`](./.gitlab-ci.yml)
+  - Runs backend/frontend tests, combined coverage generation, build checks, docs checks/build, release packaging, and Pages deployment.
+- **Pipelines**: https://gitlab.com/level-87/clockify-jira-sync/-/pipelines
+- **GitLab Releases**: https://gitlab.com/level-87/clockify-jira-sync/-/releases
+- **GitLab Pages site**: https://level-87.gitlab.io/clockify-jira-sync/
+  - Docs home: https://level-87.gitlab.io/clockify-jira-sync/
+  - Legacy docs URL redirect: https://level-87.gitlab.io/clockify-jira-sync/docs/
+  - Coverage dashboard: https://level-87.gitlab.io/clockify-jira-sync/coverage/
+  - Combined coverage JSON (badge source): https://level-87.gitlab.io/clockify-jira-sync/coverage/combined-coverage.json
+  - Frontend LCOV report: https://level-87.gitlab.io/clockify-jira-sync/coverage/frontend/lcov-report/index.html
 - **Local docs workspace**: `docs-site/`
   - Standalone Docusaurus site for Markdown-based project documentation.
-  - GitHub Pages publishes the Docusaurus build at the site root, while CI keeps coverage assets under `/coverage/`.
+  - GitLab Pages publishes the Docusaurus build at the site root, while CI keeps coverage assets under `/coverage/`.

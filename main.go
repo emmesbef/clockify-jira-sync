@@ -49,7 +49,7 @@ func main() {
 
 	// Start Wails
 	err = wails.Run(&options.App{
-		Title:             "Clockify ↔ Jira Time Sync",
+		Title:             "JiraFy Clockwork",
 		Width:             420,
 		Height:            720,
 		MinWidth:          380,
@@ -80,7 +80,7 @@ func main() {
 			WebviewIsTransparent: true,
 			WindowIsTranslucent:  true,
 			About: &mac.AboutInfo{
-				Title:   "Clockify ↔ Jira Time Sync v" + version,
+				Title:   "JiraFy Clockwork v" + version,
 				Message: "A desktop time tracker that syncs between Clockify and Jira.\n\n© 2026 Fabian Emmesberger\nEmail: info@level-87.dev\nLicense: MIT Licensed",
 			},
 		},

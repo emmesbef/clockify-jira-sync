@@ -68,7 +68,7 @@ type UpdateEntryRequest struct {
 	End         string `json:"end"`   // ISO 8601
 }
 
-// UpdateInfo describes an available update from GitHub Releases
+// UpdateInfo describes an available update from GitLab Releases
 type UpdateInfo struct {
 	Version      string `json:"version"`
 	IsPreRelease bool   `json:"isPreRelease"`

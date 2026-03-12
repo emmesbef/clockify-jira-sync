@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -17,12 +18,11 @@ import (
 )
 
 const (
-	defaultGitHubAPI = "https://api.github.com"
-	repoOwner        = "emmesbef"
-	repoName         = "clockify-jira-sync"
+	defaultGitLabAPI = "https://gitlab.com/api/v4"
+	projectPath      = "level-87/clockify-jira-sync"
 )
 
-// Updater checks for and applies application updates from GitHub Releases.
+// Updater checks for and applies application updates from GitLab Releases.
 type Updater struct {
 	baseURL    string
 	httpClient *http.Client
@@ -31,42 +31,52 @@ type Updater struct {
 // New creates an Updater with default settings.
 func New() *Updater {
 	return &Updater{
-		baseURL:    defaultGitHubAPI,
+		baseURL:    defaultGitLabAPI,
 		httpClient: &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
-// SetBaseURL overrides the GitHub API base URL (for tests).
+// SetBaseURL overrides the GitLab API base URL (for tests).
 func (u *Updater) SetBaseURL(url string) {
 	u.baseURL = url
 }
 
-type ghRelease struct {
-	TagName     string    `json:"tag_name"`
-	Name        string    `json:"name"`
-	PreRelease  bool      `json:"prerelease"`
-	Draft       bool      `json:"draft"`
-	Body        string    `json:"body"`
-	PublishedAt time.Time `json:"published_at"`
-	Assets      []ghAsset `json:"assets"`
+type gitlabRelease struct {
+	TagName         string             `json:"tag_name"`
+	Name            string             `json:"name"`
+	Description     string             `json:"description"`
+	ReleasedAt      string             `json:"released_at"`
+	UpcomingRelease bool               `json:"upcoming_release"`
+	Assets          gitlabReleaseAsset `json:"assets"`
 }
 
-type ghAsset struct {
-	Name               string `json:"name"`
-	BrowserDownloadURL string `json:"browser_download_url"`
-	Size               int64  `json:"size"`
+type gitlabReleaseAsset struct {
+	Links []gitlabAssetLink `json:"links"`
 }
 
-// CheckForUpdate queries GitHub Releases and returns info about the latest
-// available update, or nil if the current version is up to date.
-func (u *Updater) CheckForUpdate(currentVersion string, includeBeta bool) (*models.UpdateInfo, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/releases", u.baseURL, repoOwner, repoName)
-	req, err := http.NewRequest("GET", url, nil)
+type gitlabAssetLink struct {
+	Name           string `json:"name"`
+	URL            string `json:"url"`
+	DirectAssetURL string `json:"direct_asset_url"`
+}
+
+type releaseAsset struct {
+	Name        string
+	DownloadURL string
+	Size        int64
+}
+
+func (u *Updater) releasesURL() string {
+	return fmt.Sprintf("%s/projects/%s/releases", u.baseURL, url.PathEscape(projectPath))
+}
+
+func (u *Updater) fetchReleases() ([]gitlabRelease, error) {
+	req, err := http.NewRequest("GET", u.releasesURL(), nil)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("User-Agent", "clockify-jira-sync-updater")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "jirafy-clockwork-updater")
 
 	resp, err := u.httpClient.Do(req)
 	if err != nil {
@@ -75,22 +85,60 @@ func (u *Updater) CheckForUpdate(currentVersion string, includeBeta bool) (*mode
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GitHub API error %d", resp.StatusCode)
+		return nil, fmt.Errorf("GitLab API error %d", resp.StatusCode)
 	}
 
-	var releases []ghRelease
+	var releases []gitlabRelease
 	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
 		return nil, fmt.Errorf("failed to parse releases: %w", err)
 	}
+	return releases, nil
+}
+
+func resolveAssetURL(apiBase, assetURL string) string {
+	parsed, err := url.Parse(assetURL)
+	if err != nil {
+		return assetURL
+	}
+	if parsed.IsAbs() {
+		return assetURL
+	}
+	base, err := url.Parse(apiBase)
+	if err != nil {
+		return assetURL
+	}
+	base = &url.URL{Scheme: base.Scheme, Host: base.Host}
+	return base.ResolveReference(parsed).String()
+}
+
+func formatReleasedAt(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	publishedAt, err := time.Parse(time.RFC3339, raw)
+	if err != nil {
+		return raw
+	}
+	return publishedAt.Format(time.RFC3339)
+}
+
+// CheckForUpdate queries GitLab Releases and returns info about the latest
+// available update, or nil if the current version is up to date.
+func (u *Updater) CheckForUpdate(currentVersion string, includeBeta bool) (*models.UpdateInfo, error) {
+	releases, err := u.fetchReleases()
+	if err != nil {
+		return nil, err
+	}
 
 	// Find the best candidate release
-	var best *ghRelease
+	var best *gitlabRelease
 	for i := range releases {
 		r := &releases[i]
-		if r.Draft {
+		if r.UpcomingRelease {
 			continue
 		}
-		if r.PreRelease && !includeBeta {
+		isPreRelease := IsPreReleaseVersion(r.TagName)
+		if isPreRelease && !includeBeta {
 			continue
 		}
 		ver := normalizeVersion(r.TagName)
@@ -105,54 +153,36 @@ func (u *Updater) CheckForUpdate(currentVersion string, includeBeta bool) (*mode
 		return nil, nil // up to date
 	}
 
-	asset := pickAsset(best.Assets)
+	asset := pickAsset(best.Assets.Links)
 	downloadURL := ""
 	var size int64
 	if asset != nil {
-		downloadURL = asset.BrowserDownloadURL
+		downloadURL = resolveAssetURL(u.baseURL, asset.DownloadURL)
 		size = asset.Size
 	}
 
 	return &models.UpdateInfo{
 		Version:      normalizeVersion(best.TagName),
-		IsPreRelease: best.PreRelease,
+		IsPreRelease: IsPreReleaseVersion(best.TagName),
 		DownloadURL:  downloadURL,
-		ReleaseNotes: best.Body,
+		ReleaseNotes: best.Description,
 		Size:         size,
-		PublishedAt:  best.PublishedAt.Format(time.RFC3339),
+		PublishedAt:  formatReleasedAt(best.ReleasedAt),
 	}, nil
 }
 
 // GetLatestStable returns the latest non-prerelease version, used for
 // forcing downgrade when beta channel is disabled.
 func (u *Updater) GetLatestStable(currentVersion string) (*models.UpdateInfo, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/releases", u.baseURL, repoOwner, repoName)
-	req, err := http.NewRequest("GET", url, nil)
+	releases, err := u.fetchReleases()
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("User-Agent", "clockify-jira-sync-updater")
 
-	resp, err := u.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check for updates: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GitHub API error %d", resp.StatusCode)
-	}
-
-	var releases []ghRelease
-	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
-		return nil, fmt.Errorf("failed to parse releases: %w", err)
-	}
-
-	var best *ghRelease
+	var best *gitlabRelease
 	for i := range releases {
 		r := &releases[i]
-		if r.Draft || r.PreRelease {
+		if r.UpcomingRelease || IsPreReleaseVersion(r.TagName) {
 			continue
 		}
 		if best == nil || CompareVersions(normalizeVersion(r.TagName), normalizeVersion(best.TagName)) > 0 {
@@ -164,11 +194,11 @@ func (u *Updater) GetLatestStable(currentVersion string) (*models.UpdateInfo, er
 		return nil, nil
 	}
 
-	asset := pickAsset(best.Assets)
+	asset := pickAsset(best.Assets.Links)
 	downloadURL := ""
 	var size int64
 	if asset != nil {
-		downloadURL = asset.BrowserDownloadURL
+		downloadURL = resolveAssetURL(u.baseURL, asset.DownloadURL)
 		size = asset.Size
 	}
 
@@ -176,9 +206,9 @@ func (u *Updater) GetLatestStable(currentVersion string) (*models.UpdateInfo, er
 		Version:      normalizeVersion(best.TagName),
 		IsPreRelease: false,
 		DownloadURL:  downloadURL,
-		ReleaseNotes: best.Body,
+		ReleaseNotes: best.Description,
 		Size:         size,
-		PublishedAt:  best.PublishedAt.Format(time.RFC3339),
+		PublishedAt:  formatReleasedAt(best.ReleasedAt),
 	}, nil
 }
 
@@ -365,7 +395,7 @@ func extractToDir(zipPath, destDir string) error {
 }
 
 // pickAsset selects the correct platform asset from a release.
-func pickAsset(assets []ghAsset) *ghAsset {
+func pickAsset(assets []gitlabAssetLink) *releaseAsset {
 	var suffix string
 	switch runtime.GOOS {
 	case "darwin":
@@ -378,7 +408,18 @@ func pickAsset(assets []ghAsset) *ghAsset {
 
 	for i := range assets {
 		if strings.HasSuffix(assets[i].Name, suffix) {
-			return &assets[i]
+			assetURL := strings.TrimSpace(assets[i].DirectAssetURL)
+			if assetURL == "" {
+				assetURL = strings.TrimSpace(assets[i].URL)
+			}
+			if assetURL == "" {
+				continue
+			}
+			return &releaseAsset{
+				Name:        assets[i].Name,
+				DownloadURL: assetURL,
+				Size:        0,
+			}
 		}
 	}
 	return nil

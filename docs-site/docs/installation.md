@@ -7,7 +7,7 @@ title: Installation
 
 ## Download
 
-Grab the latest release for your platform from the [GitHub Releases page](https://github.com/emmesbef/clockify-jira-sync/releases). Each release includes:
+Grab the latest release for your platform from the [GitLab Releases page](https://gitlab.com/level-87/clockify-jira-sync/-/releases). Each release includes:
 
 | Asset | Platform |
 | --- | --- |
@@ -17,29 +17,7 @@ Grab the latest release for your platform from the [GitHub Releases page](https:
 
 ## macOS
 
-### Option A: Homebrew (Recommended)
-
-Install via Homebrew to skip macOS Gatekeeper warnings entirely:
-
-```bash
-brew install --cask emmesbef/tap/clockify-jira-sync
-```
-
-The app is installed to `/Applications` and the quarantine flag is removed automatically.
-
-To update:
-
-```bash
-brew upgrade --cask clockify-jira-sync
-```
-
-To uninstall:
-
-```bash
-brew uninstall --cask clockify-jira-sync
-```
-
-### Option B: Manual download
+### Option A: Manual download (Recommended)
 
 ### 1. Unzip
 
@@ -66,6 +44,16 @@ If right-click → Open doesn't show an "Open" button on your macOS version, go 
 ### 3. Optional: move to Applications
 
 Drag `clockify-jira-sync.app` into your `/Applications` folder for easy access.
+
+### Option B: Homebrew cask (optional maintainer flow)
+
+If you maintain a Homebrew tap, point the cask URL at GitLab-hosted release assets:
+
+```ruby
+url "https://gitlab.com/level-87/clockify-jira-sync/-/packages/generic/clockify-jira-sync/v#{version}/clockify-jira-sync-v#{version}-macos-universal.zip"
+```
+
+This keeps Homebrew distribution independent from GitHub release hosting.
 
 ## Windows
 

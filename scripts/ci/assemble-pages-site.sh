@@ -7,7 +7,7 @@ usage() {
   cat <<'EOF'
 Usage: scripts/ci/assemble-pages-site.sh [options]
 
-Assemble GitHub Pages content from the docs-site Docusaurus build and coverage outputs.
+Assemble GitLab Pages content from the docs-site Docusaurus build and coverage outputs.
 
 Options:
   --docs-dir <path>               Docusaurus build directory (default: docs-site/build)
@@ -146,7 +146,7 @@ cat > "$OUTPUT_DIR/docs/index.html" <<'EOF'
     <title>Redirecting to documentation</title>
   </head>
   <body>
-    <p>Documentation now lives at the GitHub Pages site root. <a href="../">Continue to the docs home</a>.</p>
+    <p>Documentation now lives at the GitLab Pages site root. <a href="../">Continue to the docs home</a>.</p>
     <p><a href="../coverage/">Open the coverage dashboard</a></p>
   </body>
 </html>
@@ -237,4 +237,4 @@ html_content = f"""<!doctype html>
 coverage_index.write_text(html_content, encoding="utf-8")
 PY
 
-echo "GitHub Pages site assembled at '$OUTPUT_DIR'."
+echo "GitLab Pages site assembled at '$OUTPUT_DIR'."

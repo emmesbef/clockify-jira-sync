@@ -5,7 +5,7 @@ slug: /
 
 # Overview
 
-Clockify ↔ Jira Time Sync is a desktop application built with Wails to help developers track time against Jira issues and keep Clockify/Jira worklogs in sync.
+JiraFy Clockwork is a desktop application built with Wails to help developers track time against Jira issues and keep Clockify/Jira worklogs in sync.
 
 ## Core capabilities
 
@@ -23,7 +23,7 @@ Clockify ↔ Jira Time Sync is a desktop application built with Wails to help de
 | `internal/` | Go packages for app orchestration, config, Jira/Clockify clients, branch detection, and mock services. |
 | `frontend/` | The isolated Wails/Vite frontend workspace used by the desktop application. |
 | `docs-site/` | The standalone Docusaurus documentation workspace added for project docs authoring and local builds. |
-| `scripts/ci/` | CI scripts for README/docs freshness, coverage aggregation, and final GitHub Pages assembly around the Docusaurus build. |
+| `scripts/ci/` | CI scripts for README/docs freshness, coverage aggregation, and final GitLab Pages assembly around the Docusaurus build. |
 | `build/` | Wails packaging assets and generated desktop build outputs. |
 
 ## Documentation scope
@@ -34,7 +34,7 @@ This Docusaurus site is focused on the living project documentation that develop
 - [Development, build, and test workflow](./development-build-test.md)
 - [Releases, versioning, and CI/CD overview](./release-cicd.md)
 
-The live GitHub Pages site now publishes this Docusaurus build as the primary documentation experience, while the CI scripts in `scripts/ci/` keep the coverage dashboard and badge JSON available under `/coverage/`.
+The live GitLab Pages site now publishes this Docusaurus build as the primary documentation experience, while the CI scripts in `scripts/ci/` keep the coverage dashboard and badge JSON available under `/coverage/`.
 
 ## Architecture at a glance
 
@@ -47,4 +47,4 @@ The application uses a Wails v2 architecture:
 
 ## When to use this docs site
 
-Use this site for project-level documentation, operational guidance, and onboarding notes. The desktop app implementation remains isolated in `frontend/`, and the CI/docs assembly scripts continue to handle coverage aggregation plus final Pages packaging around this Docusaurus build.
+Use this site for project-level documentation, operational guidance, and onboarding notes. The desktop app implementation remains isolated in `frontend/`, and the CI/docs assembly scripts continue to handle coverage aggregation plus final GitLab Pages packaging around this Docusaurus build.

@@ -18,7 +18,7 @@ Before working on the project locally, install the following tools:
 Install the app and docs dependencies separately so the Wails frontend and docs site stay isolated:
 
 ```bash
-git clone https://github.com/emmesbef/clockify-jira-sync.git
+git clone https://gitlab.com/level-87/clockify-jira-sync.git
 cd clockify-jira-sync
 
 cd frontend && npm ci
@@ -77,4 +77,4 @@ npm run build
 npm run serve
 ```
 
-These commands only affect the docs site; they do not build the Wails application or change the existing Pages publishing pipeline.
+These commands only affect the docs site; they do not build the Wails application or change the existing GitLab Pages publishing pipeline.

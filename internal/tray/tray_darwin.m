@@ -338,7 +338,7 @@ static NSArray<NSDictionary *> *ticketsFromGoJSON(char *jsonCString) {
 
 - (void)showAbout:(id)sender {
     NSAlert *alert = [[NSAlert alloc] init];
-    [alert setMessageText:@"Clockify ↔ Jira Sync"];
+    [alert setMessageText:@"JiraFy Clockwork"];
     [alert setInformativeText:[NSString stringWithFormat:@"Version %@\n\nDesktop app to sync Clockify time entries with Jira worklogs.",
                                appVersion ?: @"dev"]];
     [alert setAlertStyle:NSAlertStyleInformational];
@@ -421,7 +421,7 @@ void initTray(const char *version, const void *iconData, int iconLen) {
         }
         updateStatusButton();
 
-        statusItem.button.toolTip = @"Clockify ↔ Jira Sync";
+        statusItem.button.toolTip = @"JiraFy Clockwork";
 
         NSMenu *menu = [[NSMenu alloc] init];
 

@@ -2,13 +2,13 @@
 
 import {themes as prismThemes} from 'prism-react-renderer';
 
-const siteUrl = 'https://emmesbef.github.io';
+const siteUrl = 'https://level-87.gitlab.io';
 const pagesBaseUrl = '/clockify-jira-sync/';
 const coverageUrl = `${siteUrl}${pagesBaseUrl}coverage/`;
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'Clockify ↔ Jira Time Sync Docs',
+  title: 'JiraFy Clockwork Docs',
   tagline: 'Project documentation for setup, development, testing, and releases.',
   favicon: 'img/favicon.ico',
   future: {
@@ -16,7 +16,7 @@ const config = {
   },
   url: siteUrl,
   baseUrl: pagesBaseUrl,
-  organizationName: 'emmesbef',
+  organizationName: 'level-87',
   projectName: 'clockify-jira-sync',
   onBrokenLinks: 'throw',
   markdown: {
@@ -36,7 +36,7 @@ const config = {
         docs: {
           routeBasePath: '/',
           sidebarPath: './sidebars.js',
-          editUrl: 'https://github.com/emmesbef/clockify-jira-sync/tree/main/docs-site/',
+          editUrl: 'https://gitlab.com/level-87/clockify-jira-sync/-/tree/main/docs-site/',
         },
         blog: false,
         theme: {
@@ -52,7 +52,7 @@ const config = {
         respectPrefersColorScheme: true,
       },
       navbar: {
-        title: 'Clockify ↔ Jira Sync',
+        title: 'JiraFy Clockwork',
         items: [
           {
             type: 'docSidebar',
@@ -66,8 +66,8 @@ const config = {
             position: 'left',
           },
           {
-            href: 'https://github.com/emmesbef/clockify-jira-sync',
-            label: 'GitHub',
+            href: 'https://gitlab.com/level-87/clockify-jira-sync',
+            label: 'GitLab',
             position: 'right',
           },
         ],
@@ -101,15 +101,15 @@ const config = {
             items: [
               {
                 label: 'Repository',
-                href: 'https://github.com/emmesbef/clockify-jira-sync',
+                href: 'https://gitlab.com/level-87/clockify-jira-sync',
               },
               {
                 label: 'Issues',
-                href: 'https://github.com/emmesbef/clockify-jira-sync/issues',
+                href: 'https://gitlab.com/level-87/clockify-jira-sync/-/issues',
               },
               {
-                label: 'GitHub Releases',
-                href: 'https://github.com/emmesbef/clockify-jira-sync/releases',
+                label: 'GitLab Releases',
+                href: 'https://gitlab.com/level-87/clockify-jira-sync/-/releases',
               },
             ],
           },
@@ -117,21 +117,21 @@ const config = {
             title: 'Automation',
             items: [
               {
-                label: 'CI workflow',
-                href: 'https://github.com/emmesbef/clockify-jira-sync/actions/workflows/ci.yml',
+                label: 'CI pipelines',
+                href: 'https://gitlab.com/level-87/clockify-jira-sync/-/pipelines',
               },
               {
                 label: 'Coverage dashboard',
                 href: coverageUrl,
               },
               {
-                label: 'Release workflow',
-                href: 'https://github.com/emmesbef/clockify-jira-sync/actions/workflows/release.yml',
+                label: 'Release tags',
+                href: 'https://gitlab.com/level-87/clockify-jira-sync/-/tags',
               },
             ],
           },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} Clockify ↔ Jira Time Sync. Built with Docusaurus.`,
+        copyright: `Copyright © ${new Date().getFullYear()} JiraFy Clockwork. Built with Docusaurus.`,
       },
       prism: {
         theme: prismThemes.github,

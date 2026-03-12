@@ -61,7 +61,7 @@ func TestNormalizeVersion(t *testing.T) {
 	}
 }
 
-func mockGitHubServer(releases []ghRelease) *httptest.Server {
+func mockGitLabServer(releases []gitlabRelease) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(releases)
@@ -69,18 +69,20 @@ func mockGitHubServer(releases []ghRelease) *httptest.Server {
 }
 
 func TestCheckForUpdate_NewerAvailable(t *testing.T) {
-	server := mockGitHubServer([]ghRelease{
+	server := mockGitLabServer([]gitlabRelease{
 		{
-			TagName:    "v2.0.0",
-			PreRelease: false,
-			Assets: []ghAsset{
-				{Name: "clockify-jira-sync-v2.0.0-macos-universal.zip", BrowserDownloadURL: "https://example.com/mac.zip", Size: 1000},
-				{Name: "clockify-jira-sync-v2.0.0-windows-amd64.zip", BrowserDownloadURL: "https://example.com/win.zip", Size: 2000},
+			TagName:     "v2.0.0",
+			Description: "Stable release",
+			ReleasedAt:  "2026-01-01T12:00:00Z",
+			Assets: gitlabReleaseAsset{
+				Links: []gitlabAssetLink{
+					{Name: "clockify-jira-sync-v2.0.0-macos-universal.zip", URL: "https://example.com/mac.zip"},
+					{Name: "clockify-jira-sync-v2.0.0-windows-amd64.zip", URL: "https://example.com/win.zip"},
+				},
 			},
 		},
 		{
-			TagName:    "v1.8.0",
-			PreRelease: false,
+			TagName: "v1.8.0",
 		},
 	})
 	defer server.Close()
@@ -101,12 +103,15 @@ func TestCheckForUpdate_NewerAvailable(t *testing.T) {
 	if info.IsPreRelease {
 		t.Error("expected stable release")
 	}
+	if info.ReleaseNotes != "Stable release" {
+		t.Errorf("unexpected release notes: %q", info.ReleaseNotes)
+	}
 }
 
 func TestCheckForUpdate_UpToDate(t *testing.T) {
-	server := mockGitHubServer([]ghRelease{
-		{TagName: "v1.8.7", PreRelease: false},
-		{TagName: "v1.8.6", PreRelease: false},
+	server := mockGitLabServer([]gitlabRelease{
+		{TagName: "v1.8.7"},
+		{TagName: "v1.8.6"},
 	})
 	defer server.Close()
 
@@ -123,9 +128,9 @@ func TestCheckForUpdate_UpToDate(t *testing.T) {
 }
 
 func TestCheckForUpdate_BetaExcluded(t *testing.T) {
-	server := mockGitHubServer([]ghRelease{
-		{TagName: "v2.0.0-beta.1", PreRelease: true},
-		{TagName: "v1.8.7", PreRelease: false},
+	server := mockGitLabServer([]gitlabRelease{
+		{TagName: "v2.0.0-beta.1"},
+		{TagName: "v1.8.7"},
 	})
 	defer server.Close()
 
@@ -143,10 +148,16 @@ func TestCheckForUpdate_BetaExcluded(t *testing.T) {
 }
 
 func TestCheckForUpdate_BetaIncluded(t *testing.T) {
-	server := mockGitHubServer([]ghRelease{
-		{TagName: "v2.0.0-beta.1", PreRelease: true,
-			Assets: []ghAsset{{Name: "clockify-jira-sync-v2.0.0-beta.1-macos-universal.zip", BrowserDownloadURL: "https://example.com/beta.zip", Size: 500}}},
-		{TagName: "v1.8.7", PreRelease: false},
+	server := mockGitLabServer([]gitlabRelease{
+		{
+			TagName: "v2.0.0-beta.1",
+			Assets: gitlabReleaseAsset{
+				Links: []gitlabAssetLink{
+					{Name: "clockify-jira-sync-v2.0.0-beta.1-macos-universal.zip", URL: "https://example.com/beta.zip"},
+				},
+			},
+		},
+		{TagName: "v1.8.7"},
 	})
 	defer server.Close()
 
@@ -167,11 +178,17 @@ func TestCheckForUpdate_BetaIncluded(t *testing.T) {
 }
 
 func TestGetLatestStable(t *testing.T) {
-	server := mockGitHubServer([]ghRelease{
-		{TagName: "v2.0.0-beta.1", PreRelease: true},
-		{TagName: "v1.9.0", PreRelease: false,
-			Assets: []ghAsset{{Name: "clockify-jira-sync-v1.9.0-macos-universal.zip", BrowserDownloadURL: "https://example.com/stable.zip", Size: 800}}},
-		{TagName: "v1.8.7", PreRelease: false},
+	server := mockGitLabServer([]gitlabRelease{
+		{TagName: "v2.0.0-beta.1"},
+		{
+			TagName: "v1.9.0",
+			Assets: gitlabReleaseAsset{
+				Links: []gitlabAssetLink{
+					{Name: "clockify-jira-sync-v1.9.0-macos-universal.zip", URL: "https://example.com/stable.zip"},
+				},
+			},
+		},
+		{TagName: "v1.8.7"},
 	})
 	defer server.Close()
 
@@ -193,10 +210,10 @@ func TestGetLatestStable(t *testing.T) {
 	}
 }
 
-func TestCheckForUpdate_DraftsSkipped(t *testing.T) {
-	server := mockGitHubServer([]ghRelease{
-		{TagName: "v99.0.0", Draft: true},
-		{TagName: "v1.8.7", PreRelease: false},
+func TestCheckForUpdate_UpcomingSkipped(t *testing.T) {
+	server := mockGitLabServer([]gitlabRelease{
+		{TagName: "v99.0.0", UpcomingRelease: true},
+		{TagName: "v1.8.7"},
 	})
 	defer server.Close()
 
@@ -208,6 +225,6 @@ func TestCheckForUpdate_DraftsSkipped(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if info != nil {
-		t.Errorf("expected nil (draft skipped), got %+v", info)
+		t.Errorf("expected nil (upcoming skipped), got %+v", info)
 	}
 }

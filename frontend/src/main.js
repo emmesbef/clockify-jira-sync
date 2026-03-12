@@ -1,4 +1,4 @@
-// Main application logic for Clockify ↔ Jira Time Sync
+// Main application logic for JiraFy Clockwork
 // Uses Wails Go bindings for all backend calls
 
 import { formatDatetimeLocal, formatDuration, formatTime } from './utils/time.js';
@@ -1124,7 +1124,7 @@ function initSettings() {
     if (App.GetVersion) {
         App.GetVersion().then(v => {
             const el = document.getElementById('app-version');
-            if (el) el.textContent = `clockify-jira-sync v${v}`;
+            if (el) el.textContent = `JiraFy Clockwork v${v}`;
         }).catch(() => {});
     }
 

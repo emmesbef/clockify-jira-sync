@@ -23,8 +23,8 @@ if grep -qi "official Wails Vanilla template" "$README_FILE"; then
 fi
 
 required_patterns=(
-  '^# Clockify ↔ Jira Time Sync'
-  'actions/workflows/ci.yml/badge.svg'
+  '^# JiraFy Clockwork'
+  'gitlab\.com/level-87/clockify-jira-sync/badges/main/pipeline\.svg'
   'coverage/combined-coverage.json'
   '^## What it does'
   '^## Development, build, and test commands'

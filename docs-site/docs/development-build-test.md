@@ -38,7 +38,7 @@ scripts/ci/generate-combined-coverage.sh
 scripts/ci/assemble-pages-site.sh
 ```
 
-`verify-docs-freshness.sh` still uses `generate-docs-bundle.sh` to check the deterministic README/Go docs snapshot, while GitHub Pages now publishes the Docusaurus build from `docs-site/build/` and `assemble-pages-site.sh` keeps the coverage dashboard plus badge JSON under `/coverage/`.
+`verify-docs-freshness.sh` still uses `generate-docs-bundle.sh` to check the deterministic README/Go docs snapshot, while GitLab Pages now publishes the Docusaurus build from `docs-site/build/` and `assemble-pages-site.sh` keeps the coverage dashboard plus badge JSON under `/coverage/`.
 
 ## Production-style validation
 

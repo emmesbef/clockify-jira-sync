@@ -1,4 +1,4 @@
-# Clockify ↔ Jira Time Sync docs site
+# JiraFy Clockwork docs site
 
 This workspace contains the standalone Docusaurus documentation site for the project.
 
@@ -18,4 +18,4 @@ npm run build
 npm run serve
 ```
 
-The docs workspace is intentionally isolated from the Wails app frontend in `../frontend/`. GitHub Pages publishes the `docs-site/build/` output at `https://emmesbef.github.io/clockify-jira-sync/`, while CI keeps coverage assets available under `/coverage/`.
+The docs workspace is intentionally isolated from the Wails app frontend in `../frontend/`. GitLab Pages publishes the `docs-site/build/` output at `https://level-87.gitlab.io/clockify-jira-sync/`, while CI keeps coverage assets available under `/coverage/`.

@@ -7,44 +7,55 @@ title: Releases, versioning, and CI/CD
 
 ## CI workflow overview
 
-The main CI workflow lives at [`ci.yml`](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/ci.yml) and currently runs on pushes, pull requests, and manual dispatches.
+The main CI pipeline lives in [`.gitlab-ci.yml`](https://gitlab.com/level-87/clockify-jira-sync/-/blob/main/.gitlab-ci.yml) and runs on branch pushes, merge requests, and tags.
 
 | Job | Purpose |
 | --- | --- |
-| `docs` | Verifies README/docs freshness and builds the Docusaurus site artifact. |
 | `test` | Runs Go tests, frontend coverage, and combined coverage generation. |
 | `build` | Builds the frontend bundle and Go packages. |
-| `pages` | Assembles the GitHub Pages artifact from the Docusaurus build and coverage outputs. |
-| `deploy-pages` | Deploys the Pages artifact after the `pages` job succeeds on `main`. |
+| `docs` | Verifies README/docs freshness and builds the Docusaurus site artifact. |
+| `pages` | Assembles and publishes the GitLab Pages artifact from docs and coverage outputs on the default branch. |
+| `release_macos` | Builds and packages the macOS universal app zip on tagged commits (requires a `macos` runner tag). |
+| `release_windows` | Builds and packages the Windows amd64 app zip on tagged commits (requires a `windows` runner tag). |
+| `release_publish` | Generates checksums, uploads release assets to GitLab Package Registry, and creates/updates the GitLab Release. |
 
 ## Current Pages behavior
 
-GitHub Pages now uses the `docs-site/` Docusaurus production build as the primary documentation site. The custom helper under `scripts/ci/assemble-pages-site.sh` still contributes the coverage dashboard and stable coverage artifact paths under `/coverage/`, so the live README badge source remains unchanged.
+GitLab Pages uses the `docs-site/` Docusaurus production build as the primary documentation site. The helper under `scripts/ci/assemble-pages-site.sh` contributes the coverage dashboard and stable coverage artifact paths under `/coverage/`, so the README badge source stays stable.
 
 ## Release workflow overview
 
-Release Please manages release PRs in [`release-please.yml`](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/release-please.yml). When a release PR is merged, it creates the `v*` tag and GitHub Release, then invokes [`release.yml`](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/release.yml) as a reusable workflow to build and upload release assets. The same workflow can also be run manually for an existing tag with `workflow_dispatch`.
+Releases are tag-driven. Pushing a `v*` tag triggers `release_macos`, `release_windows`, and `release_publish`:
 
-`release-please.yml` uses `RELEASE_PLEASE_TOKEN` when that secret is configured and otherwise falls back to the default GitHub Actions token. For release PR creation to work, choose one of these repository setups:
+1. Build macOS and Windows artifacts.
+2. Package zip files per platform.
+3. Generate `SHA256SUMS`.
+4. Upload assets to GitLab Package Registry.
+5. Create or update the matching GitLab Release.
 
-1. Enable **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests**.
-2. Or add a `RELEASE_PLEASE_TOKEN` repository secret backed by a token that can write **contents**, **issues**, and **pull requests**.
+Optional secret:
+
+- `GITLAB_TOKEN` (API scope): used by `release_publish` if job-token restrictions prevent release API writes.
+
+Runner requirements:
+
+- A macOS runner tagged `macos` with Go, Node.js/npm, and signing tooling available.
+- A Windows runner tagged `windows` with Go and Node.js/npm available.
 
 Current release behavior:
 
 - Builds macOS and Windows Wails artifacts.
 - Packages the generated binaries into zip archives.
 - Produces a `SHA256SUMS` file for release assets.
-- Publishes the artifacts to GitHub Releases.
+- Publishes the artifacts to GitLab Releases.
 
 ## Versioning status
 
-Versioning is now Release Please-driven. In practice, this means:
+Versioning is tag-driven in GitLab CI. In practice:
 
-- Conventional Commits on `main` determine the next release version.
-- Release Please updates `wails.json`, `frontend/package.json`, `frontend/package-lock.json`, `docs-site/package.json`, and `docs-site/package-lock.json` in the release PR.
-- Merging the release PR creates the version tag and GitHub Release before macOS/Windows artifacts are attached.
-- `release.yml` remains available as a manual backfill/rebuild path for an existing `v*` tag.
+- Create and push a version tag (for example, `v1.11.0`) to trigger a release.
+- CI sets `wails.json` `info.productVersion` at build time from the tag value.
+- Repository version files can still be updated conventionally in regular commits when needed.
 
 ## Code signing
 
@@ -56,8 +67,8 @@ Windows binaries are currently unsigned. Authenticode signing may be added in th
 
 ## Useful references
 
-- [CI workflow](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/ci.yml)
-- [Release workflow](https://github.com/emmesbef/clockify-jira-sync/actions/workflows/release.yml)
-- [GitHub Releases](https://github.com/emmesbef/clockify-jira-sync/releases)
+- [GitLab CI config](https://gitlab.com/level-87/clockify-jira-sync/-/blob/main/.gitlab-ci.yml)
+- [Pipelines](https://gitlab.com/level-87/clockify-jira-sync/-/pipelines)
+- [GitLab Releases](https://gitlab.com/level-87/clockify-jira-sync/-/releases)
 - [Setup & configuration](./setup-configuration.md)
 - [Development, build, and test](./development-build-test.md)
