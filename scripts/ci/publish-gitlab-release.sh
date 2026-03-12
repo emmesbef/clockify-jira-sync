@@ -5,14 +5,14 @@ IFS=$'\n\t'
 
 APP_NAME="${APP_NAME:-jirafy-clockwork}"
 ASSETS_DIR="${ASSETS_DIR:-release-assets}"
-TAG="${CI_COMMIT_TAG:-}"
+TAG="${CI_COMMIT_TAG:-${RELEASE_TAG:-}}"
 API_BASE="${CI_API_V4_URL:-}"
 PROJECT_ID="${CI_PROJECT_ID:-}"
 PROJECT_URL="${CI_PROJECT_URL:-}"
 JOB_TOKEN="${CI_JOB_TOKEN:-}"
 
 if [[ -z "$TAG" ]]; then
-  echo "Error: CI_COMMIT_TAG is required." >&2
+  echo "Error: CI_COMMIT_TAG or RELEASE_TAG is required." >&2
   exit 1
 fi
 
