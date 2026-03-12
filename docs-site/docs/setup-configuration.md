@@ -18,7 +18,7 @@ Before working on the project locally, install the following tools:
 Install the app and docs dependencies separately so the Wails frontend and docs site stay isolated:
 
 ```bash
-git clone https://gitlab.com/level-87/jirafy-clockwork.git
+git clone https://gitlab.com/level-87/clockify-jira-sync.git
 cd jirafy-clockwork
 
 cd frontend && npm ci

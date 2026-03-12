@@ -1,7 +1,7 @@
 # JiraFy Clockwork
 
-[![Pipeline](https://gitlab.com/level-87/jirafy-clockwork/badges/main/pipeline.svg)](https://gitlab.com/level-87/jirafy-clockwork/-/pipelines)
-[![Latest release](https://img.shields.io/gitlab/v/release/level-87/jirafy-clockwork?include_prereleases)](https://gitlab.com/level-87/jirafy-clockwork/-/releases)
+[![Pipeline](https://gitlab.com/level-87/clockify-jira-sync/badges/main/pipeline.svg)](https://gitlab.com/level-87/clockify-jira-sync/-/pipelines)
+[![Latest release](https://img.shields.io/gitlab/v/release/level-87/clockify-jira-sync?include_prereleases)](https://gitlab.com/level-87/clockify-jira-sync/-/releases)
 [![Combined coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Flevel-87.gitlab.io%2Fcoverage%2Fcombined-coverage.json&query=%24.combined.coverage_percent&suffix=%25&label=combined%20coverage)](https://level-87.gitlab.io/coverage/)
 
 Desktop app built with Wails (Go backend + Vite frontend) to track time on Jira issues and keep Clockify/Jira worklogs in sync.
@@ -10,14 +10,14 @@ Repository and technical identifiers now use the app-aligned slug `jirafy-clockw
 
 ## Installation
 
-Download the latest release for your platform from [GitLab Releases](https://gitlab.com/level-87/jirafy-clockwork/-/releases).
+Download the latest release for your platform from [GitLab Releases](https://gitlab.com/level-87/clockify-jira-sync/-/releases).
 
 ### macOS
 
 Use Homebrew tap for easiest install:
 
 ```bash
-brew install --cask level-87/tap/jirafy-clockwork
+brew install --cask emmesbef/tap/jirafy-clockwork
 ```
 
 1. Download the `*-macos-universal.zip` file and unzip it.
@@ -123,8 +123,8 @@ git push origin v1.11.0
 
 - **GitLab CI config**: [`/.gitlab-ci.yml`](./.gitlab-ci.yml)
   - Runs backend/frontend tests, combined coverage generation, build checks, docs checks/build, release packaging, and Pages deployment.
-- **Pipelines**: https://gitlab.com/level-87/jirafy-clockwork/-/pipelines
-- **GitLab Releases**: https://gitlab.com/level-87/jirafy-clockwork/-/releases
+- **Pipelines**: https://gitlab.com/level-87/clockify-jira-sync/-/pipelines
+- **GitLab Releases**: https://gitlab.com/level-87/clockify-jira-sync/-/releases
 - **GitLab Pages site**: https://level-87.gitlab.io/
   - Docs home: https://level-87.gitlab.io/
   - Coverage dashboard: https://level-87.gitlab.io/coverage/

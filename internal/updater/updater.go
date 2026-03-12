@@ -19,7 +19,7 @@ import (
 
 const (
 	defaultGitLabAPI = "https://gitlab.com/api/v4"
-	projectPath      = "level-87/jirafy-clockwork"
+	projectPath      = "level-87/clockify-jira-sync"
 )
 
 // Updater checks for and applies application updates from GitLab Releases.

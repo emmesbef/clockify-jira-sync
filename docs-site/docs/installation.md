@@ -7,7 +7,7 @@ title: Installation
 
 ## Download
 
-Grab the latest release for your platform from the [GitLab Releases page](https://gitlab.com/level-87/jirafy-clockwork/-/releases). Each release includes:
+Grab the latest release for your platform from the [GitLab Releases page](https://gitlab.com/level-87/clockify-jira-sync/-/releases). Each release includes:
 
 | Asset | Platform |
 | --- | --- |
@@ -50,7 +50,7 @@ Drag `jirafy-clockwork.app` into your `/Applications` folder for easy access.
 Install from the tap:
 
 ```bash
-brew install --cask level-87/tap/jirafy-clockwork
+brew install --cask emmesbef/tap/jirafy-clockwork
 ```
 
 To update:
@@ -62,7 +62,7 @@ brew upgrade --cask jirafy-clockwork
 Tap maintainers should point the cask URL at GitLab-hosted release assets:
 
 ```ruby
-url "https://gitlab.com/level-87/jirafy-clockwork/-/packages/generic/jirafy-clockwork/v#{version}/jirafy-clockwork-v#{version}-macos-universal.zip"
+url "https://gitlab.com/level-87/clockify-jira-sync/-/packages/generic/jirafy-clockwork/v#{version}/jirafy-clockwork-v#{version}-macos-universal.zip"
 ```
 
 This keeps Homebrew distribution independent from GitHub release hosting.

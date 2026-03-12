@@ -7,7 +7,7 @@ title: Releases, versioning, and CI/CD
 
 ## CI workflow overview
 
-The main CI pipeline lives in [`.gitlab-ci.yml`](https://gitlab.com/level-87/jirafy-clockwork/-/blob/main/.gitlab-ci.yml) and runs on branch pushes, merge requests, and tags.
+The main CI pipeline lives in [`.gitlab-ci.yml`](https://gitlab.com/level-87/clockify-jira-sync/-/blob/main/.gitlab-ci.yml) and runs on branch pushes, merge requests, and tags.
 
 | Job | Purpose |
 | --- | --- |
@@ -67,8 +67,8 @@ Windows binaries are currently unsigned. Authenticode signing may be added in th
 
 ## Useful references
 
-- [GitLab CI config](https://gitlab.com/level-87/jirafy-clockwork/-/blob/main/.gitlab-ci.yml)
-- [Pipelines](https://gitlab.com/level-87/jirafy-clockwork/-/pipelines)
-- [GitLab Releases](https://gitlab.com/level-87/jirafy-clockwork/-/releases)
+- [GitLab CI config](https://gitlab.com/level-87/clockify-jira-sync/-/blob/main/.gitlab-ci.yml)
+- [Pipelines](https://gitlab.com/level-87/clockify-jira-sync/-/pipelines)
+- [GitLab Releases](https://gitlab.com/level-87/clockify-jira-sync/-/releases)
 - [Setup & configuration](./setup-configuration.md)
 - [Development, build, and test](./development-build-test.md)
