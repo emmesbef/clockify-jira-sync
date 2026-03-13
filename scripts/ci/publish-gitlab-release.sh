@@ -11,6 +11,15 @@ PROJECT_ID="${CI_PROJECT_ID:-}"
 PROJECT_URL="${CI_PROJECT_URL:-}"
 JOB_TOKEN="${CI_JOB_TOKEN:-}"
 
+curl_with_retry() {
+  curl --silent --show-error \
+    --retry 5 \
+    --retry-delay 3 \
+    --retry-max-time 240 \
+    --connect-timeout 20 \
+    "$@"
+}
+
 if [[ -z "$TAG" ]]; then
   echo "Error: CI_COMMIT_TAG or RELEASE_TAG is required." >&2
   exit 1
@@ -59,7 +68,7 @@ uploaded_names=()
 for file_path in "${zip_assets[@]}" "$checksums_file"; do
   file_name="$(basename "$file_path")"
   echo "Uploading ${file_name} to GitLab Package Registry"
-  curl --fail --silent --show-error \
+  curl_with_retry --fail \
     --header "JOB-TOKEN: ${JOB_TOKEN}" \
     --upload-file "$file_path" \
     "${package_base}/${file_name}"
@@ -153,17 +162,17 @@ release_url="${API_BASE}/projects/${PROJECT_ID}/releases/${tag_encoded}"
 collection_url="${API_BASE}/projects/${PROJECT_ID}/releases"
 
 echo "Publishing release ${TAG}"
-if curl --silent --show-error --fail \
+if curl_with_retry --fail \
   --header "${auth_header_name}: ${auth_token}" \
   "$release_url" >/dev/null; then
-  curl --fail --silent --show-error \
+  curl_with_retry --fail \
     --request PUT \
     --header "${auth_header_name}: ${auth_token}" \
     --header "Content-Type: application/json" \
     --data "$update_payload" \
     "$release_url" >/dev/null
 else
-  curl --fail --silent --show-error \
+  curl_with_retry --fail \
     --request POST \
     --header "${auth_header_name}: ${auth_token}" \
     --header "Content-Type: application/json" \
