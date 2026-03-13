@@ -1,6 +1,6 @@
 {
   "name": "docs-site",
-  "version": "1.10.19",
+  "version": "1.10.20",
   "private": true,
   "scripts": {
     "start": "docusaurus start",

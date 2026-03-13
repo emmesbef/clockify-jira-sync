@@ -31,8 +31,16 @@ if [[ ! -f "${macos_asset}" ]]; then
   exit 1
 fi
 
+app_bundle_name="$(
+  zipinfo -1 "${macos_asset}" | awk -F/ '/\.app\/$/ {print $1; exit}'
+)"
+if [[ -z "${app_bundle_name}" ]]; then
+  echo "Error: no .app bundle directory found in ${macos_asset}" >&2
+  exit 1
+fi
+
 sha256="$(sha256sum "${macos_asset}" | awk '{print $1}')"
-echo "Updating Homebrew cask to version ${version} (sha256 ${sha256})"
+echo "Updating Homebrew cask to version ${version} (sha256 ${sha256}, app ${app_bundle_name})"
 
 cask_content="$(
   cat <<EOF
@@ -45,11 +53,11 @@ cask "jirafy-clockwork" do
   desc "Desktop app to sync Clockify time entries with Jira worklogs"
   homepage "https://level-87.gitlab.io/"
 
-  app "JiraFy Clockwork.app"
+  app "${app_bundle_name}"
 
   postflight do
     system_command "/usr/bin/xattr",
-                   args: ["-cr", "#{appdir}/JiraFy Clockwork.app"]
+                   args: ["-cr", "#{appdir}/${app_bundle_name}"]
   end
 
   zap trash: [
