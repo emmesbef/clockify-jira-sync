@@ -113,6 +113,7 @@ wails build
 - That pushed tag triggers the release pipeline, which packages assets and publishes/updates the matching GitLab Release.
 - When a Homebrew tap token is available, release pipelines update `emmesbef/homebrew-tap` (`Casks/jirafy-clockwork.rb`) to the new version and macOS SHA256. The cask download URL points to `downloads/jirafy-clockwork-vX.Y.Z-macos-universal.zip` on the default branch (`/-/raw/main/...`) so `brew` can download without package-registry auth.
 - macOS package input is `downloads/jirafy-clockwork-vX.Y.Z-macos-universal.zip` (prebuilt on macOS with Wails and committed before tagging). Linux CI cross-compilation cannot produce a runnable Wails macOS bundle.
+- The zipped bundle directory must be `JiraFy Clockwork.app` (branded name) so Homebrew installs it under the expected app name.
 - Manual tagging is still supported:
 
 ```bash

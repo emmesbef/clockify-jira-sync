@@ -12,6 +12,7 @@ HOMEBREW_TAP_REPO="${HOMEBREW_TAP_REPO:-homebrew-tap}"
 HOMEBREW_TAP_BRANCH="${HOMEBREW_TAP_BRANCH:-main}"
 HOMEBREW_CASK_PATH="${HOMEBREW_CASK_PATH:-Casks/jirafy-clockwork.rb}"
 HOMEBREW_CASK_DOWNLOAD_BASE_URL="${HOMEBREW_CASK_DOWNLOAD_BASE_URL:-https://gitlab.com/level-87/clockify-jira-sync/-/raw/main/downloads}"
+HOMEBREW_CASK_APP_BUNDLE_NAME="${HOMEBREW_CASK_APP_BUNDLE_NAME:-JiraFy Clockwork.app}"
 
 if [[ -z "${TAG}" ]]; then
   echo "Error: CI_COMMIT_TAG or RELEASE_TAG is required." >&2
@@ -38,9 +39,14 @@ if [[ -z "${app_bundle_name}" ]]; then
   echo "Error: no .app bundle directory found in ${macos_asset}" >&2
   exit 1
 fi
+if [[ "${app_bundle_name}" != "${HOMEBREW_CASK_APP_BUNDLE_NAME}" ]]; then
+  echo "Error: expected app bundle '${HOMEBREW_CASK_APP_BUNDLE_NAME}' in ${macos_asset}, found '${app_bundle_name}'." >&2
+  echo "Rebuild and zip the macOS app using the branded bundle directory name." >&2
+  exit 1
+fi
 
 sha256="$(sha256sum "${macos_asset}" | awk '{print $1}')"
-echo "Updating Homebrew cask to version ${version} (sha256 ${sha256}, app ${app_bundle_name})"
+echo "Updating Homebrew cask to version ${version} (sha256 ${sha256}, app ${HOMEBREW_CASK_APP_BUNDLE_NAME})"
 
 cask_content="$(
   cat <<EOF
@@ -53,11 +59,11 @@ cask "jirafy-clockwork" do
   desc "Desktop app to sync Clockify time entries with Jira worklogs"
   homepage "https://level-87.gitlab.io/"
 
-  app "${app_bundle_name}"
+  app "${HOMEBREW_CASK_APP_BUNDLE_NAME}"
 
   postflight do
     system_command "/usr/bin/xattr",
-                   args: ["-cr", "#{appdir}/${app_bundle_name}"]
+                   args: ["-cr", "#{appdir}/${HOMEBREW_CASK_APP_BUNDLE_NAME}"]
   end
 
   zap trash: [
