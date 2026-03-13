@@ -11,7 +11,7 @@ HOMEBREW_TAP_OWNER="${HOMEBREW_TAP_OWNER:-emmesbef}"
 HOMEBREW_TAP_REPO="${HOMEBREW_TAP_REPO:-homebrew-tap}"
 HOMEBREW_TAP_BRANCH="${HOMEBREW_TAP_BRANCH:-main}"
 HOMEBREW_CASK_PATH="${HOMEBREW_CASK_PATH:-Casks/jirafy-clockwork.rb}"
-HOMEBREW_CASK_ARTIFACT_BASE_URL="${HOMEBREW_CASK_ARTIFACT_BASE_URL:-https://gitlab.com/level-87/clockify-jira-sync/-/jobs/artifacts}"
+HOMEBREW_CASK_DOWNLOAD_BASE_URL="${HOMEBREW_CASK_DOWNLOAD_BASE_URL:-https://gitlab.com/level-87/clockify-jira-sync/-/raw/main/downloads}"
 
 if [[ -z "${TAG}" ]]; then
   echo "Error: CI_COMMIT_TAG or RELEASE_TAG is required." >&2
@@ -24,12 +24,10 @@ if [[ -z "${HOMEBREW_TAP_TOKEN}" ]]; then
 fi
 
 version="${TAG#v}"
-macos_asset="${ASSETS_DIR}/${APP_NAME}-${TAG}-macos-universal.zip"
+macos_asset="downloads/${APP_NAME}-${TAG}-macos-universal.zip"
 if [[ ! -f "${macos_asset}" ]]; then
-  macos_asset="${ASSETS_DIR}/${APP_NAME}-macos-universal.zip"
-fi
-if [[ ! -f "${macos_asset}" ]]; then
-  echo "Error: macOS release asset not found in ${ASSETS_DIR}" >&2
+  echo "Error: expected prebuilt macOS asset not found at ${macos_asset}" >&2
+  echo "Generate it on macOS with 'wails build -clean -platform darwin/universal' and commit the zipped app to downloads/." >&2
   exit 1
 fi
 
@@ -42,7 +40,7 @@ cask "jirafy-clockwork" do
   version "${version}"
   sha256 "${sha256}"
 
-  url "${HOMEBREW_CASK_ARTIFACT_BASE_URL}/v#{version}/raw/release-assets/${APP_NAME}-v#{version}-macos-universal.zip?job=release_cross_platform"
+  url "${HOMEBREW_CASK_DOWNLOAD_BASE_URL}/${APP_NAME}-v#{version}-macos-universal.zip"
   name "JiraFy Clockwork"
   desc "Desktop app to sync Clockify time entries with Jira worklogs"
   homepage "https://level-87.gitlab.io/"

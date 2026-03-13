@@ -63,7 +63,7 @@ brew upgrade --cask emmesbef/tap/jirafy-clockwork
 Tap maintainers should point the cask URL at GitLab-hosted release assets:
 
 ```ruby
-url "https://gitlab.com/level-87/clockify-jira-sync/-/jobs/artifacts/v#{version}/raw/release-assets/jirafy-clockwork-v#{version}-macos-universal.zip?job=release_cross_platform"
+url "https://gitlab.com/level-87/clockify-jira-sync/-/raw/main/downloads/jirafy-clockwork-v#{version}-macos-universal.zip"
 ```
 
 This keeps Homebrew distribution independent from GitHub release hosting.

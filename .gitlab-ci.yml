@@ -94,7 +94,6 @@ release_cross_platform:
         fi
       fi
       version="${release_tag#v}"
-      macos_bundle_name="JiraFy Clockwork.app"
       echo "RELEASE_TAG=${release_tag}" > release-assets.env
 
       cd frontend
@@ -103,43 +102,16 @@ release_cross_platform:
       cd ..
 
       rm -rf release-assets release-work
-      mkdir -p release-assets \
-        "release-work/macos/${macos_bundle_name}/Contents/MacOS" \
-        "release-work/macos/${macos_bundle_name}/Contents/Resources" \
-        release-work/windows
+      mkdir -p release-assets release-work/windows
 
-      cp build/bin/jirafy-clockwork.app/Contents/Info.plist \
-        "release-work/macos/${macos_bundle_name}/Contents/Info.plist"
-      cp build/bin/jirafy-clockwork.app/Contents/Resources/iconfile.icns \
-        "release-work/macos/${macos_bundle_name}/Contents/Resources/iconfile.icns"
-
-      GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build \
-        -trimpath \
-        -ldflags "-X main.version=${version}" \
-        -o "release-work/macos/${macos_bundle_name}/Contents/MacOS/jirafy-clockwork-amd64" \
-        .
-      GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build \
-        -trimpath \
-        -ldflags "-X main.version=${version}" \
-        -o "release-work/macos/${macos_bundle_name}/Contents/MacOS/jirafy-clockwork-arm64" \
-        .
-
-      cat > "release-work/macos/${macos_bundle_name}/Contents/MacOS/jirafy-clockwork" <<'EOF'
-      #!/bin/sh
-      set -eu
-      BIN_DIR="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
-      case "$(uname -m)" in
-        arm64|aarch64) exec "${BIN_DIR}/jirafy-clockwork-arm64" "$@" ;;
-        x86_64|amd64) exec "${BIN_DIR}/jirafy-clockwork-amd64" "$@" ;;
-        *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
-      esac
-      EOF
-      chmod +x "release-work/macos/${macos_bundle_name}/Contents/MacOS/jirafy-clockwork"*
-
-      (
-        cd release-work/macos
-        zip -qry "../../release-assets/${APP_NAME}-${release_tag}-macos-universal.zip" "${macos_bundle_name}"
-      )
+      prebuilt_macos_zip="downloads/${APP_NAME}-${release_tag}-macos-universal.zip"
+      if [[ ! -f "${prebuilt_macos_zip}" ]]; then
+        echo "Error: missing prebuilt macOS zip ${prebuilt_macos_zip}" >&2
+        echo "Build it on macOS with wails and commit it to downloads/ before releasing." >&2
+        exit 1
+      fi
+      cp "${prebuilt_macos_zip}" "release-assets/${APP_NAME}-${release_tag}-macos-universal.zip"
+      cp "${prebuilt_macos_zip}" "release-assets/${APP_NAME}-macos-universal.zip"
 
       GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build \
         -trimpath \
@@ -150,8 +122,6 @@ release_cross_platform:
         cd release-work/windows
         zip -qj "../../release-assets/${APP_NAME}-${release_tag}-windows-amd64.zip" "${APP_NAME}.exe"
       )
-      cp "release-assets/${APP_NAME}-${release_tag}-macos-universal.zip" \
-        "release-assets/${APP_NAME}-macos-universal.zip"
       cp "release-assets/${APP_NAME}-${release_tag}-windows-amd64.zip" \
         "release-assets/${APP_NAME}-windows-amd64.zip"
   artifacts:
