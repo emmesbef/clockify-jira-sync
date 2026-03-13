@@ -120,7 +120,7 @@ git push origin v1.11.0
 ```
 
 - Optional `GITLAB_TOKEN` (API scope) can be provided in CI variables for tag push/release API operations when job-token restrictions are enabled.
-- Optional `HOMEBREW_TAP_TOKEN` (GitHub token with contents write access to `emmesbef/homebrew-tap`) enables automatic cask bump commits.
+- Optional `HOMEBREW_TAP_TOKEN` (or legacy `RELEASE_PLEASE_TOKEN`) with GitHub contents write access to `emmesbef/homebrew-tap` enables automatic cask bump commits.
 
 ## CI / release / docs pages overview
 
