@@ -11,7 +11,7 @@ HOMEBREW_TAP_OWNER="${HOMEBREW_TAP_OWNER:-emmesbef}"
 HOMEBREW_TAP_REPO="${HOMEBREW_TAP_REPO:-homebrew-tap}"
 HOMEBREW_TAP_BRANCH="${HOMEBREW_TAP_BRANCH:-main}"
 HOMEBREW_CASK_PATH="${HOMEBREW_CASK_PATH:-Casks/jirafy-clockwork.rb}"
-HOMEBREW_CASK_RELEASE_BASE_URL="${HOMEBREW_CASK_RELEASE_BASE_URL:-https://gitlab.com/level-87/clockify-jira-sync/-/releases}"
+HOMEBREW_CASK_ARTIFACT_BASE_URL="${HOMEBREW_CASK_ARTIFACT_BASE_URL:-https://gitlab.com/level-87/clockify-jira-sync/-/jobs/artifacts}"
 
 if [[ -z "${TAG}" ]]; then
   echo "Error: CI_COMMIT_TAG or RELEASE_TAG is required." >&2
@@ -42,7 +42,7 @@ cask "jirafy-clockwork" do
   version "${version}"
   sha256 "${sha256}"
 
-  url "${HOMEBREW_CASK_RELEASE_BASE_URL}/v#{version}/downloads/${APP_NAME}-v#{version}-macos-universal.zip"
+  url "${HOMEBREW_CASK_ARTIFACT_BASE_URL}/v#{version}/raw/release-assets/${APP_NAME}-v#{version}-macos-universal.zip?job=release_cross_platform"
   name "JiraFy Clockwork"
   desc "Desktop app to sync Clockify time entries with Jira worklogs"
   homepage "https://level-87.gitlab.io/"
