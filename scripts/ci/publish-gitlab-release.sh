@@ -71,6 +71,9 @@ assets_links_json='[]'
 add_release_link() {
   local link_name="$1"
   local target_name="$2"
+  if jq -e --arg name "$link_name" 'any(.[]; .name == $name)' <<<"$assets_links_json" >/dev/null; then
+    return
+  fi
   assets_links_json="$(
     jq -c \
       --arg name "$link_name" \
@@ -80,28 +83,29 @@ add_release_link() {
   )"
 }
 
+uploaded_has() {
+  local candidate="$1"
+  printf '%s\n' "${uploaded_names[@]}" | grep -Fxq "$candidate"
+}
+
+macos_latest_name="${APP_NAME}-macos-universal.zip"
+windows_latest_name="${APP_NAME}-windows-amd64.zip"
 macos_versioned_name="${APP_NAME}-${TAG}-macos-universal.zip"
 windows_versioned_name="${APP_NAME}-${TAG}-windows-amd64.zip"
 checksums_versioned_name="${APP_NAME}-${TAG}-SHA256SUMS.txt"
 
-if printf '%s\n' "${uploaded_names[@]}" | grep -Fxq "$macos_versioned_name"; then
-  add_release_link "${APP_NAME}-macos-universal.zip" "$macos_versioned_name"
+if uploaded_has "$macos_versioned_name" && ! uploaded_has "$macos_latest_name"; then
+  add_release_link "$macos_latest_name" "$macos_versioned_name"
 fi
-if printf '%s\n' "${uploaded_names[@]}" | grep -Fxq "$windows_versioned_name"; then
-  add_release_link "${APP_NAME}-windows-amd64.zip" "$windows_versioned_name"
+if uploaded_has "$windows_versioned_name" && ! uploaded_has "$windows_latest_name"; then
+  add_release_link "$windows_latest_name" "$windows_versioned_name"
 fi
-if printf '%s\n' "${uploaded_names[@]}" | grep -Fxq "$checksums_versioned_name"; then
+if uploaded_has "$checksums_versioned_name"; then
   add_release_link "${APP_NAME}-SHA256SUMS.txt" "$checksums_versioned_name"
 fi
 
 for file_name in "${uploaded_names[@]}"; do
-  case "$file_name" in
-    "$macos_versioned_name" | "$windows_versioned_name" | "$checksums_versioned_name")
-      ;;
-    *)
-      add_release_link "$file_name" "$file_name"
-      ;;
-  esac
+  add_release_link "$file_name" "$file_name"
 done
 
 release_description="$(cat "$notes_file")"
