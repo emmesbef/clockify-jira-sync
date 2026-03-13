@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -65,11 +66,15 @@ type Config struct {
 	BetaChannel       bool
 	TrayTimerFormat   string
 	TrayShowTimer     bool
+	LaunchOnStartup   bool
+	SummaryWordLimit  int
+	LogRoundingMin    int
 }
 
 const (
 	trayTimerFormatHHMM   = "hh:mm"
 	trayTimerFormatHHMMSS = "hh:mm:ss"
+	summaryWordLimitMax   = 5
 )
 
 // NormalizeTrayTimerFormat returns a supported tray timer format.
@@ -82,6 +87,56 @@ func NormalizeTrayTimerFormat(format string) string {
 	default:
 		return trayTimerFormatHHMMSS
 	}
+}
+
+// NormalizeSummaryWordLimit returns a supported summary word limit.
+// 0 means "full summary".
+func NormalizeSummaryWordLimit(limit int) int {
+	switch {
+	case limit < 0:
+		return 0
+	case limit > summaryWordLimitMax:
+		return summaryWordLimitMax
+	default:
+		return limit
+	}
+}
+
+func parseSummaryWordLimit(raw string) int {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 0
+	}
+
+	parsed, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0
+	}
+	return NormalizeSummaryWordLimit(parsed)
+}
+
+// NormalizeLogRoundingMin returns a supported rounding interval (in minutes).
+// 0 means no rounding.
+func NormalizeLogRoundingMin(minutes int) int {
+	switch minutes {
+	case 0, 5, 10, 15, 30, 60:
+		return minutes
+	default:
+		return 0
+	}
+}
+
+func parseLogRoundingMin(raw string) int {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 0
+	}
+
+	parsed, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0
+	}
+	return NormalizeLogRoundingMin(parsed)
 }
 
 func Load() (*Config, error) {
@@ -108,6 +163,9 @@ func Load() (*Config, error) {
 		BetaChannel:       os.Getenv("BETA_CHANNEL") == "true",
 		TrayTimerFormat:   NormalizeTrayTimerFormat(os.Getenv("TRAY_TIMER_FORMAT")),
 		TrayShowTimer:     os.Getenv("TRAY_SHOW_TIMER") != "false",
+		LaunchOnStartup:   os.Getenv("LAUNCH_ON_STARTUP") == "true",
+		SummaryWordLimit:  parseSummaryWordLimit(os.Getenv("SUMMARY_WORD_LIMIT")),
+		LogRoundingMin:    parseLogRoundingMin(os.Getenv("LOG_ROUNDING_MINUTES")),
 	}
 
 	if cfg.MockMode {
@@ -173,6 +231,9 @@ func Save(cfg *Config) error {
 	envMap["BETA_CHANNEL"] = boolToStr(cfg.BetaChannel)
 	envMap["TRAY_TIMER_FORMAT"] = NormalizeTrayTimerFormat(cfg.TrayTimerFormat)
 	envMap["TRAY_SHOW_TIMER"] = boolToStr(cfg.TrayShowTimer)
+	envMap["LAUNCH_ON_STARTUP"] = boolToStr(cfg.LaunchOnStartup)
+	envMap["SUMMARY_WORD_LIMIT"] = strconv.Itoa(NormalizeSummaryWordLimit(cfg.SummaryWordLimit))
+	envMap["LOG_ROUNDING_MINUTES"] = strconv.Itoa(NormalizeLogRoundingMin(cfg.LogRoundingMin))
 
 	if err := godotenv.Write(envMap, p); err != nil {
 		return fmt.Errorf("cannot write config file %q: %w", p, err)

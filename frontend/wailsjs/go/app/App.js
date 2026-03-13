@@ -10,6 +10,10 @@ export function ApplyUpdate(arg1) {
   return window['go']['app']['App']['ApplyUpdate'](arg1);
 }
 
+export function CancelTimer() {
+  return window['go']['app']['App']['CancelTimer']();
+}
+
 export function CheckForUpdates() {
   return window['go']['app']['App']['CheckForUpdates']();
 }

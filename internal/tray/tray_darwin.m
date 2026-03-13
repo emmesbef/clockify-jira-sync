@@ -10,17 +10,31 @@ extern void goTrayQuit(void);
 extern void goTrayCheckUpdates(void);
 extern void goTrayStartTimer(char *ticketKey, char *description);
 extern void goTrayStopTimer(void);
+extern void goTrayCancelTimer(void);
 extern char *goTrayLoadAssignedTickets(void);
 extern char *goTraySearchTickets(char *query);
 
 static NSStatusItem *statusItem = nil;
 static NSMenuItem *showHideItem = nil;
 static NSMenuItem *timerActionItem = nil;
+static NSMenuItem *cancelTimerItem = nil;
+static NSMenuItem *statusDetailItem = nil;
+static NSView *statusDetailView = nil;
+static NSTextField *statusDetailLabel = nil;
+static NSPopover *statusHoverPopover = nil;
+static NSView *statusHoverView = nil;
+static NSTextField *statusHoverLabel = nil;
 static BOOL windowVisible = YES;
 static BOOL trayTimerRunning = NO;
 static NSImage *trayIconImage = nil;
 static NSString *trayStatusText = @"";
+static NSString *trayDetailText = @"";
+static NSString *lastHoverLayoutText = @"";
 static NSString *appVersion = nil;
+
+void showStatusHoverPopover(void);
+void hideStatusHoverPopover(void);
+void updateStatusHoverPopoverContent(NSString *detailText);
 
 @interface TrayStartController : NSObject <NSTableViewDataSource, NSTableViewDelegate, NSSearchFieldDelegate>
 @property (nonatomic, strong) NSPopover *popover;
@@ -34,6 +48,9 @@ static NSString *appVersion = nil;
 @interface TrayDelegate : NSObject
 - (void)showWindow:(id)sender;
 - (void)timerAction:(id)sender;
+- (void)cancelTimer:(id)sender;
+- (void)mouseEntered:(NSEvent *)event;
+- (void)mouseExited:(NSEvent *)event;
 - (void)showAbout:(id)sender;
 - (void)checkUpdates:(id)sender;
 - (void)quitApp:(id)sender;
@@ -147,7 +164,7 @@ static NSArray<NSDictionary *> *ticketsFromGoJSON(char *jsonCString) {
     [tableView setHeaderView:nil];
     [tableView setDataSource:self];
     [tableView setDelegate:self];
-    [tableView setRowHeight:32];
+    [tableView setRowHeight:40];
     [tableView setTarget:self];
     [tableView setDoubleAction:@selector(startPressed:)];
 
@@ -266,19 +283,40 @@ static NSArray<NSDictionary *> *ticketsFromGoJSON(char *jsonCString) {
     return self.tickets.count;
 }
 
+- (CGFloat)tableView:(NSTableView *)tableView heightOfRow:(NSInteger)row {
+    if (row < 0 || row >= (NSInteger)self.tickets.count) {
+        return 40.0;
+    }
+
+    NSDictionary *ticket = self.tickets[(NSUInteger)row];
+    NSString *key = [ticket[@"key"] isKindOfClass:[NSString class]] ? ticket[@"key"] : @"";
+    NSString *summary = [ticket[@"summary"] isKindOfClass:[NSString class]] ? ticket[@"summary"] : @"";
+    NSString *displayValue = [summary length] > 0 ? [NSString stringWithFormat:@"%@  %@", key, summary] : key;
+
+    CGFloat textWidth = MAX(tableView.bounds.size.width - 12.0, 120.0);
+    NSRect textRect = [displayValue boundingRectWithSize:NSMakeSize(textWidth, CGFLOAT_MAX)
+                                                 options:(NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading)
+                                              attributes:@{NSFontAttributeName: [NSFont systemFontOfSize:[NSFont systemFontSize]]}];
+
+    CGFloat rowHeight = ceil(textRect.size.height) + 8.0;
+    return MAX(rowHeight, 28.0);
+}
+
 - (NSView *)tableView:(NSTableView *)tableView viewForTableColumn:(NSTableColumn *)tableColumn row:(NSInteger)row {
     static NSString *identifier = @"TrayTicketCell";
     NSTableCellView *cell = [tableView makeViewWithIdentifier:identifier owner:self];
     if (!cell) {
-        cell = [[NSTableCellView alloc] initWithFrame:NSMakeRect(0, 0, tableColumn.width, 32)];
+        cell = [[NSTableCellView alloc] initWithFrame:NSMakeRect(0, 0, tableColumn.width, 40)];
         cell.identifier = identifier;
 
-        NSTextField *label = [[NSTextField alloc] initWithFrame:NSMakeRect(6, 6, tableColumn.width - 12, 20)];
+        NSTextField *label = [[NSTextField alloc] initWithFrame:NSMakeRect(6, 4, tableColumn.width - 12, 32)];
         [label setEditable:NO];
         [label setBezeled:NO];
         [label setDrawsBackground:NO];
         [label setSelectable:NO];
-        [label setLineBreakMode:NSLineBreakByTruncatingTail];
+        [label setLineBreakMode:NSLineBreakByWordWrapping];
+        [label setUsesSingleLineMode:NO];
+        [label setMaximumNumberOfLines:0];
         [cell addSubview:label];
         cell.textField = label;
     }
@@ -286,11 +324,15 @@ static NSArray<NSDictionary *> *ticketsFromGoJSON(char *jsonCString) {
     NSDictionary *ticket = self.tickets[row];
     NSString *key = [ticket[@"key"] isKindOfClass:[NSString class]] ? ticket[@"key"] : @"";
     NSString *summary = [ticket[@"summary"] isKindOfClass:[NSString class]] ? ticket[@"summary"] : @"";
-    if ([summary length] > 0) {
-        cell.textField.stringValue = [NSString stringWithFormat:@"%@  %@", key, summary];
-    } else {
-        cell.textField.stringValue = key;
+    NSString *displayValue = [summary length] > 0 ? [NSString stringWithFormat:@"%@  %@", key, summary] : key;
+    CGFloat rowHeight = [tableView rectOfRow:row].size.height;
+    if (rowHeight <= 0) {
+        rowHeight = 40;
     }
+    cell.frame = NSMakeRect(0, 0, tableColumn.width, rowHeight);
+    cell.textField.frame = NSMakeRect(6, 4, tableColumn.width - 12, MAX(rowHeight - 8, 20));
+    cell.textField.stringValue = displayValue;
+    cell.toolTip = displayValue;
 
     return cell;
 }
@@ -323,6 +365,7 @@ static NSArray<NSDictionary *> *ticketsFromGoJSON(char *jsonCString) {
 }
 
 - (void)timerAction:(id)sender {
+    hideStatusHoverPopover();
     if (trayTimerRunning) {
         goTrayStopTimer();
         return;
@@ -334,6 +377,18 @@ static NSArray<NSDictionary *> *ticketsFromGoJSON(char *jsonCString) {
     dispatch_async(dispatch_get_main_queue(), ^{
         [trayStartController showFromStatusButton:statusItem.button];
     });
+}
+
+- (void)cancelTimer:(id)sender {
+    goTrayCancelTimer();
+}
+
+- (void)mouseEntered:(NSEvent *)event {
+    (void)event;
+}
+
+- (void)mouseExited:(NSEvent *)event {
+    (void)event;
 }
 
 - (void)showAbout:(id)sender {
@@ -367,6 +422,88 @@ void updateTimerActionTitle(void) {
         return;
     }
     [timerActionItem setTitle:trayTimerRunning ? @"Stop Timer" : @"Start Timer…"];
+    if (cancelTimerItem) {
+        cancelTimerItem.hidden = !trayTimerRunning;
+    }
+}
+
+void hideStatusHoverPopover(void) {
+    if (statusHoverPopover && statusHoverPopover.isShown) {
+        [statusHoverPopover close];
+    }
+}
+
+void updateStatusHoverPopoverContent(NSString *detailText) {
+    if (!statusHoverPopover || !statusHoverView || !statusHoverLabel) {
+        return;
+    }
+
+    NSString *trimmed = trimmedString(detailText ?: @"");
+    if ([trimmed length] == 0 || [trimmed isEqualToString:@"JiraFy Clockwork"]) {
+        statusHoverLabel.stringValue = @"";
+        lastHoverLayoutText = @"";
+        hideStatusHoverPopover();
+        return;
+    }
+    if ([trimmed isEqualToString:lastHoverLayoutText]) {
+        return;
+    }
+
+    statusHoverLabel.stringValue = trimmed;
+    CGFloat popoverWidth = 460.0;
+    CGFloat horizontalPadding = 12.0;
+    CGFloat textWidth = popoverWidth - (horizontalPadding * 2.0);
+    NSFont *font = statusHoverLabel.font ?: [NSFont systemFontOfSize:[NSFont systemFontSize]];
+    NSRect textRect = [trimmed boundingRectWithSize:NSMakeSize(textWidth, CGFLOAT_MAX)
+                                            options:(NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading)
+                                         attributes:@{NSFontAttributeName: font}];
+    CGFloat textHeight = MAX(17.0, ceil(textRect.size.height));
+    CGFloat popoverHeight = textHeight + 16.0;
+    CGFloat labelY = (popoverHeight - textHeight) / 2.0;
+
+    statusHoverLabel.frame = NSMakeRect(horizontalPadding, labelY, textWidth, textHeight);
+    statusHoverView.frame = NSMakeRect(0, 0, popoverWidth, popoverHeight);
+    statusHoverPopover.contentSize = statusHoverView.frame.size;
+    lastHoverLayoutText = trimmed;
+
+    if (statusHoverPopover.isShown && statusItem && statusItem.button) {
+        NSRect buttonBounds = statusItem.button.bounds;
+        NSRect centeredAnchor = NSMakeRect(NSMidX(buttonBounds), NSMinY(buttonBounds), 1.0, NSHeight(buttonBounds));
+        [statusHoverPopover close];
+        [statusHoverPopover showRelativeToRect:centeredAnchor
+                                        ofView:statusItem.button
+                                 preferredEdge:NSRectEdgeMinY];
+    }
+}
+
+void showStatusHoverPopover(void) {
+    return;
+}
+
+void updateStatusDetailItem(NSString *detailText) {
+    if (!statusDetailItem || !statusDetailView || !statusDetailLabel) {
+        return;
+    }
+
+    NSString *trimmed = trimmedString(detailText ?: @"");
+    if ([trimmed length] == 0 || [trimmed isEqualToString:@"JiraFy Clockwork"]) {
+        statusDetailLabel.stringValue = @"";
+        statusDetailItem.hidden = YES;
+        hideStatusHoverPopover();
+        return;
+    }
+
+    statusDetailLabel.stringValue = trimmed;
+    CGFloat textWidth = 352.0;
+    NSFont *font = statusDetailLabel.font ?: [NSFont systemFontOfSize:[NSFont smallSystemFontSize]];
+    NSRect textRect = [trimmed boundingRectWithSize:NSMakeSize(textWidth, CGFLOAT_MAX)
+                                            options:(NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading)
+                                         attributes:@{NSFontAttributeName: font}];
+    CGFloat textHeight = MAX(17.0, MIN(120.0, ceil(textRect.size.height)));
+
+    statusDetailLabel.frame = NSMakeRect(8, 4, textWidth, textHeight);
+    statusDetailView.frame = NSMakeRect(0, 0, 368, textHeight + 8);
+    statusDetailItem.hidden = NO;
 }
 
 void updateStatusButton(void) {
@@ -421,7 +558,37 @@ void initTray(const char *version, const void *iconData, int iconLen) {
         }
         updateStatusButton();
 
-        statusItem.button.toolTip = @"JiraFy Clockwork";
+        trayDetailText = @"";
+        statusItem.button.toolTip = nil;
+        statusHoverView = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 460, 44)];
+        statusHoverLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(12, 10, 436, 24)];
+        [statusHoverLabel setEditable:NO];
+        [statusHoverLabel setBezeled:NO];
+        [statusHoverLabel setDrawsBackground:NO];
+        [statusHoverLabel setSelectable:NO];
+        [statusHoverLabel setLineBreakMode:NSLineBreakByWordWrapping];
+        [statusHoverLabel setUsesSingleLineMode:NO];
+        [statusHoverLabel setMaximumNumberOfLines:0];
+        [statusHoverLabel setAlignment:NSTextAlignmentCenter];
+        [(NSTextFieldCell *)statusHoverLabel.cell setWraps:YES];
+        [(NSTextFieldCell *)statusHoverLabel.cell setScrollable:NO];
+        [(NSTextFieldCell *)statusHoverLabel.cell setTruncatesLastVisibleLine:NO];
+        [statusHoverLabel setFont:[NSFont systemFontOfSize:[NSFont systemFontSize]]];
+        [statusHoverView addSubview:statusHoverLabel];
+        statusHoverPopover = [[NSPopover alloc] init];
+        NSViewController *hoverController = [[NSViewController alloc] init];
+        hoverController.view = statusHoverView;
+        statusHoverPopover.contentViewController = hoverController;
+        statusHoverPopover.behavior = NSPopoverBehaviorApplicationDefined;
+        statusHoverPopover.animates = NO;
+
+        if (statusItem.button) {
+            NSTrackingArea *trackingArea = [[NSTrackingArea alloc] initWithRect:statusItem.button.bounds
+                                                                         options:(NSTrackingMouseEnteredAndExited | NSTrackingActiveAlways | NSTrackingInVisibleRect)
+                                                                           owner:trayDelegate
+                                                                        userInfo:nil];
+            [statusItem.button addTrackingArea:trackingArea];
+        }
 
         NSMenu *menu = [[NSMenu alloc] init];
 
@@ -436,7 +603,31 @@ void initTray(const char *version, const void *iconData, int iconLen) {
                                               keyEquivalent:@""];
         [timerActionItem setTarget:trayDelegate];
         [menu addItem:timerActionItem];
+
+        cancelTimerItem = [[NSMenuItem alloc] initWithTitle:@"Cancel Timer"
+                                                     action:@selector(cancelTimer:)
+                                              keyEquivalent:@""];
+        [cancelTimerItem setTarget:trayDelegate];
+        cancelTimerItem.hidden = YES;
+        [menu addItem:cancelTimerItem];
         updateTimerActionTitle();
+
+        statusDetailItem = [[NSMenuItem alloc] initWithTitle:@"" action:nil keyEquivalent:@""];
+        statusDetailView = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 368, 28)];
+        statusDetailLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(8, 4, 352, 20)];
+        [statusDetailLabel setEditable:NO];
+        [statusDetailLabel setBezeled:NO];
+        [statusDetailLabel setDrawsBackground:NO];
+        [statusDetailLabel setSelectable:NO];
+        [statusDetailLabel setLineBreakMode:NSLineBreakByWordWrapping];
+        [statusDetailLabel setUsesSingleLineMode:NO];
+        [statusDetailLabel setMaximumNumberOfLines:0];
+        [statusDetailLabel setFont:[NSFont systemFontOfSize:[NSFont smallSystemFontSize]]];
+        [statusDetailLabel setTextColor:[NSColor secondaryLabelColor]];
+        [statusDetailView addSubview:statusDetailLabel];
+        statusDetailItem.view = statusDetailView;
+        statusDetailItem.hidden = YES;
+        [menu addItem:statusDetailItem];
 
         [menu addItem:[NSMenuItem separatorItem]];
 
@@ -462,6 +653,7 @@ void initTray(const char *version, const void *iconData, int iconLen) {
         [menu addItem:quitItem];
 
         statusItem.menu = menu;
+        updateStatusDetailItem(trayDetailText);
 
     });
 }
@@ -478,6 +670,19 @@ void setTrayStatusText(const char *text) {
     dispatch_async(dispatch_get_main_queue(), ^{
         trayStatusText = textCopy ?: @"";
         updateStatusButton();
+    });
+}
+
+void setTrayTooltip(const char *text) {
+    NSString *textCopy = (text && text[0] != '\0') ? [NSString stringWithUTF8String:text] : @"";
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSString *normalized = trimmedString(textCopy);
+        trayDetailText = normalized;
+        if (statusItem && statusItem.button) {
+            statusItem.button.toolTip = nil;
+        }
+        updateStatusDetailItem(trayDetailText);
+        hideStatusHoverPopover();
     });
 }
 

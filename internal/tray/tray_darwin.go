@@ -18,6 +18,7 @@ var (
 	onCheckUpdates       func()
 	onStartTimer         func(ticketKey, description string)
 	onStopTimer          func()
+	onCancelTimer        func()
 	onLoadAssignedTicket func() string
 	onSearchTicket       func(query string) string
 )
@@ -29,6 +30,7 @@ var (
 // onCheckUpdatesFn is called when "Check for Updates…" is clicked.
 // onStartTimerFn is called when "Start Timer…" is submitted.
 // onStopTimerFn is called when "Stop Timer" is clicked.
+// onCancelTimerFn is called when "Cancel Timer" is clicked.
 // onLoadAssignedTicketFn loads the top assigned tickets for empty/focus state.
 // onSearchTicketFn loads matching tickets for a non-empty query.
 func Init(
@@ -39,6 +41,7 @@ func Init(
 	onCheckUpdatesFn func(),
 	onStartTimerFn func(ticketKey, description string),
 	onStopTimerFn func(),
+	onCancelTimerFn func(),
 	onLoadAssignedTicketFn func() string,
 	onSearchTicketFn func(query string) string,
 ) {
@@ -47,6 +50,7 @@ func Init(
 	onCheckUpdates = onCheckUpdatesFn
 	onStartTimer = onStartTimerFn
 	onStopTimer = onStopTimerFn
+	onCancelTimer = onCancelTimerFn
 	onLoadAssignedTicket = onLoadAssignedTicketFn
 	onSearchTicket = onSearchTicketFn
 
@@ -77,6 +81,13 @@ func SetStatusText(text string) {
 	cText := C.CString(text)
 	defer C.free(unsafe.Pointer(cText))
 	C.setTrayStatusText(cText)
+}
+
+// SetTooltip sets the hover tooltip text for the tray icon.
+func SetTooltip(text string) {
+	cText := C.CString(text)
+	defer C.free(unsafe.Pointer(cText))
+	C.setTrayTooltip(cText)
 }
 
 // SetTimerRunning updates the tray timer action item title/state (Start vs Stop).
@@ -130,6 +141,13 @@ func goTrayStartTimer(ticketKey *C.char, description *C.char) {
 func goTrayStopTimer() {
 	if onStopTimer != nil {
 		onStopTimer()
+	}
+}
+
+//export goTrayCancelTimer
+func goTrayCancelTimer() {
+	if onCancelTimer != nil {
+		onCancelTimer()
 	}
 }
 

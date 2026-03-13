@@ -48,6 +48,7 @@ var startDetachedProcess = func(name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	return cmd.Start()
 }
+var applyLaunchOnStartup = setLaunchOnStartup
 
 var trayTicketKeyPattern = regexp.MustCompile(`[A-Z][A-Z0-9]+-\d+`)
 
@@ -155,6 +156,30 @@ func (a *App) InitTray(version string, icon []byte) {
 				wailsRuntime.EventsEmit(a.ctx, "tray-timer-stopped", ticketKey)
 			}
 		}()
+	}, func() {
+		go func() {
+			ticketKey := ""
+			a.mu.RLock()
+			if a.timer.Running {
+				ticketKey = a.timer.TicketKey
+			}
+			a.mu.RUnlock()
+
+			if err := a.CancelTimer(); err != nil {
+				log.Printf("Tray cancel timer failed: %v", err)
+				if strings.Contains(err.Error(), "no timer is running") {
+					tray.SetTimerRunning(false)
+				}
+				if a.ctx != nil {
+					wailsRuntime.EventsEmit(a.ctx, "tray-cancel-timer-error", err.Error())
+				}
+				return
+			}
+
+			if a.ctx != nil {
+				wailsRuntime.EventsEmit(a.ctx, "tray-timer-canceled", ticketKey)
+			}
+		}()
 	}, func() string {
 		tickets, err := a.GetMyTickets()
 		if err != nil {
@@ -197,14 +222,25 @@ func (a *App) GetConfig() *config.Config {
 
 // SaveConfig updates and saves the configuration
 func (a *App) SaveConfig(newCfg config.Config) error {
+	prevLaunchOnStartup := a.cfg.LaunchOnStartup
+
 	a.cfg.ClockifyAPIKey = newCfg.ClockifyAPIKey
 	a.cfg.ClockifyWorkspace = newCfg.ClockifyWorkspace
 	a.cfg.JiraBaseURL = newCfg.JiraBaseURL
 	a.cfg.JiraEmail = newCfg.JiraEmail
 	a.cfg.JiraAPIToken = newCfg.JiraAPIToken
+	a.cfg.LaunchOnStartup = newCfg.LaunchOnStartup
+	a.cfg.SummaryWordLimit = config.NormalizeSummaryWordLimit(newCfg.SummaryWordLimit)
+	a.cfg.LogRoundingMin = config.NormalizeLogRoundingMin(newCfg.LogRoundingMin)
 	if newCfg.TrayTimerFormat != "" {
 		a.cfg.TrayTimerFormat = config.NormalizeTrayTimerFormat(newCfg.TrayTimerFormat)
 		a.cfg.TrayShowTimer = newCfg.TrayShowTimer
+	}
+
+	if prevLaunchOnStartup != a.cfg.LaunchOnStartup {
+		if err := applyLaunchOnStartup(a.cfg.LaunchOnStartup); err != nil {
+			return fmt.Errorf("failed to update launch on startup: %w", err)
+		}
 	}
 
 	err := config.Save(a.cfg)
@@ -347,6 +383,12 @@ func (a *App) Startup(ctx context.Context) {
 
 // DomReady is called after the frontend DOM is loaded.
 func (a *App) DomReady(ctx context.Context) {
+	// Ensure the main window is visible and foregrounded on first launch.
+	go func() {
+		time.Sleep(120 * time.Millisecond)
+		a.showFromTray()
+	}()
+
 	// Check for updates now that the frontend can receive events
 	go a.CheckStartupUpdate()
 }
@@ -462,15 +504,26 @@ func (a *App) StopTimer() (*models.TimeEntry, error) {
 		return nil, fmt.Errorf("failed to stop Clockify timer: %w", err)
 	}
 
-	// Calculate duration
-	duration := int64(time.Since(a.timer.StartedAt).Seconds())
+	startedAt := a.timer.StartedAt
+	endedAt := time.Now()
+	duration := int64(endedAt.Sub(startedAt).Seconds())
 	if duration < 60 {
 		duration = 60 // Jira requires minimum 1 minute
+	}
+	roundingMin := config.NormalizeLogRoundingMin(a.cfg.LogRoundingMin)
+	if roundingMin > 0 {
+		duration = roundDurationUp(duration, roundingMin)
+		endedAt = startedAt.Add(time.Duration(duration) * time.Second)
 	}
 
 	// Create worklog in Jira
 	comment := fmt.Sprintf("%s %s", a.timer.TicketKey, a.timer.TicketSummary)
-	jiraWorklogID, err := a.jira.AddWorklog(a.timer.TicketKey, a.timer.StartedAt, duration, comment)
+	if roundingMin > 0 && clockifyEntry.ClockifyID != "" {
+		if err := a.clockify.UpdateTimeEntry(clockifyEntry.ClockifyID, comment, startedAt, endedAt); err != nil {
+			log.Printf("Warning: Failed to apply Clockify rounding: %v", err)
+		}
+	}
+	jiraWorklogID, err := a.jira.AddWorklog(a.timer.TicketKey, startedAt, duration, comment)
 	if err != nil {
 		log.Printf("Warning: Failed to add Jira worklog: %v", err)
 		// Don't fail — Clockify entry was already stopped
@@ -481,8 +534,8 @@ func (a *App) StopTimer() (*models.TimeEntry, error) {
 		TicketKey:     a.timer.TicketKey,
 		TicketSummary: a.timer.TicketSummary,
 		Description:   comment,
-		Start:         a.timer.StartedAt,
-		End:           time.Now(),
+		Start:         startedAt,
+		End:           endedAt,
 		Duration:      duration,
 		ClockifyID:    clockifyEntry.ClockifyID,
 		JiraWorklogID: jiraWorklogID,
@@ -495,6 +548,28 @@ func (a *App) StopTimer() (*models.TimeEntry, error) {
 	a.timer = models.TimerState{}
 
 	return &entry, nil
+}
+
+// CancelTimer discards the currently running timer without creating Jira worklogs.
+func (a *App) CancelTimer() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if !a.timer.Running {
+		return fmt.Errorf("no timer is running")
+	}
+
+	clockifyID := strings.TrimSpace(a.timer.ClockifyID)
+	if clockifyID == "" {
+		return fmt.Errorf("cannot cancel timer: missing Clockify entry ID")
+	}
+	if err := a.clockify.DeleteTimeEntry(clockifyID); err != nil {
+		return fmt.Errorf("failed to cancel Clockify timer: %w", err)
+	}
+
+	a.stopTrayUpdatesLocked()
+	a.timer = models.TimerState{}
+	return nil
 }
 
 // GetTimerStatus returns the current timer state
@@ -533,6 +608,11 @@ func (a *App) AddManualEntry(req models.ManualEntryRequest) (*models.TimeEntry, 
 	}
 
 	duration := int64(end.Sub(start).Seconds())
+	roundingMin := config.NormalizeLogRoundingMin(a.cfg.LogRoundingMin)
+	if roundingMin > 0 {
+		duration = roundDurationUp(duration, roundingMin)
+		end = start.Add(time.Duration(duration) * time.Second)
+	}
 
 	// Get ticket info
 	ticket, err := a.jira.GetIssue(req.TicketKey)
@@ -922,6 +1002,7 @@ func (a *App) stopTrayUpdatesLocked() {
 		a.trayCancel = nil
 	}
 	tray.SetStatusText("")
+	tray.SetTooltip("")
 	tray.SetTimerRunning(false)
 }
 
@@ -930,10 +1011,12 @@ func (a *App) refreshTrayStatus() {
 	timer := a.timer
 	show := a.cfg.TrayShowTimer
 	format := config.NormalizeTrayTimerFormat(a.cfg.TrayTimerFormat)
+	wordLimit := config.NormalizeSummaryWordLimit(a.cfg.SummaryWordLimit)
 	a.mu.RUnlock()
 
 	if !timer.Running || !show {
 		tray.SetStatusText("")
+		tray.SetTooltip("")
 		return
 	}
 
@@ -941,11 +1024,34 @@ func (a *App) refreshTrayStatus() {
 	if elapsed < 0 {
 		elapsed = 0
 	}
-	text := formatTrayDuration(elapsed, format)
-	if timer.TicketKey != "" {
-		text = fmt.Sprintf("%s %s", text, timer.TicketKey)
+	timerText := formatTrayDuration(elapsed, format)
+	text := timerText
+	ticketLabel := strings.TrimSpace(timer.TicketKey)
+	if timer.TicketSummary != "" {
+		summary := truncateSummary(timer.TicketSummary, wordLimit)
+		if ticketLabel != "" {
+			ticketLabel = fmt.Sprintf("%s %s", ticketLabel, summary)
+		} else {
+			ticketLabel = summary
+		}
+	}
+	if ticketLabel != "" {
+		text = fmt.Sprintf("%s · %s", ticketLabel, timerText)
 	}
 	tray.SetStatusText(text)
+
+	// Hover tooltip/popup is only needed when summary is truncated by word limit.
+	if wordLimit <= 0 {
+		tray.SetTooltip("")
+		return
+	}
+	if timer.TicketKey != "" && timer.TicketSummary != "" {
+		tray.SetTooltip(fmt.Sprintf("%s — %s", timer.TicketKey, timer.TicketSummary))
+	} else if timer.TicketKey != "" {
+		tray.SetTooltip(timer.TicketKey)
+	} else {
+		tray.SetTooltip("")
+	}
 }
 
 func formatTrayDuration(elapsed time.Duration, format string) string {
@@ -959,6 +1065,32 @@ func formatTrayDuration(elapsed time.Duration, format string) string {
 	}
 
 	return fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds)
+}
+
+func roundDurationUp(durationSeconds int64, roundingMinutes int) int64 {
+	if durationSeconds <= 0 {
+		return 0
+	}
+	roundingMinutes = config.NormalizeLogRoundingMin(roundingMinutes)
+	if roundingMinutes == 0 {
+		return durationSeconds
+	}
+
+	interval := int64(roundingMinutes * 60)
+	return ((durationSeconds + interval - 1) / interval) * interval
+}
+
+// truncateSummary limits the summary to wordLimit words.
+// A wordLimit of 0 means no truncation (full summary).
+func truncateSummary(summary string, wordLimit int) string {
+	if wordLimit <= 0 {
+		return summary
+	}
+	words := strings.Fields(summary)
+	if len(words) <= wordLimit {
+		return summary
+	}
+	return strings.Join(words[:wordLimit], " ") + "…"
 }
 
 func extractTicketKey(input string) string {

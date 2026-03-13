@@ -102,6 +102,9 @@
                     <button id="timer-stop-btn" class="btn btn-huge btn-danger-fill hidden">
                         <span class="btn-icon">⏹</span> Stop Tracking
                     </button>
+                    <button id="timer-cancel-btn" class="btn btn-huge btn-ghost hidden">
+                        <span class="btn-icon">✖</span> Cancel Timer
+                    </button>
                     <button id="manual-submit-btn" class="btn btn-huge btn-accent-fill hidden" disabled>
                         ＋ Add Time Entry
                     </button>
@@ -172,8 +175,6 @@
                                 placeholder="Atlassian Personal Access Token" />
                         </div>
 
-                        <button type="submit" class="btn btn-sm btn-accent-fill" style="margin-top: 8px;">Save
-                            Settings</button>
                     </form>
 
                     <div class="separator-line" style="margin: 8px 0;"></div>
@@ -243,7 +244,44 @@
                                 <option value="hh:mm">hh:mm</option>
                             </select>
                         </div>
+
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <span style="font-size: 13px;">Launch app at login</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="setting-launch-on-startup">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="form-group" style="gap: 4px;">
+                            <label class="muted-text" style="font-size: 11px;">Tray summary words</label>
+                            <select id="setting-summary-word-limit" class="input input-sm">
+                                <option value="0">Full summary</option>
+                                <option value="1">Max 1 word</option>
+                                <option value="2">Max 2 words</option>
+                                <option value="3">Max 3 words</option>
+                                <option value="4">Max 4 words</option>
+                                <option value="5">Max 5 words</option>
+                            </select>
+                            <span class="muted-text" style="font-size: 11px;">Applies to the running timer text in the macOS menu bar.</span>
+                        </div>
+
+                        <div class="form-group" style="gap: 4px;">
+                            <label class="muted-text" style="font-size: 11px;">Round logged time up to</label>
+                            <select id="setting-log-rounding-min" class="input input-sm">
+                                <option value="0">No rounding</option>
+                                <option value="5">5 minutes</option>
+                                <option value="10">10 minutes</option>
+                                <option value="15">15 minutes</option>
+                                <option value="30">30 minutes</option>
+                                <option value="60">1 hour</option>
+                            </select>
+                        </div>
                     </div>
+
+                    <div class="separator-line" style="margin: 8px 0;"></div>
+
+                    <button id="settings-save-btn" type="submit" form="settings-api-form" class="btn btn-sm btn-accent-fill" style="margin-top: auto;">Save Settings</button>
 
                     <div class="separator-line" style="margin: 8px 0;"></div>
 

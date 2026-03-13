@@ -65,6 +65,9 @@ export namespace config {
 	    BetaChannel: boolean;
 	    TrayTimerFormat: string;
 	    TrayShowTimer: boolean;
+	    LaunchOnStartup: boolean;
+	    SummaryWordLimit: number;
+	    LogRoundingMin: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -82,6 +85,9 @@ export namespace config {
 	        this.BetaChannel = source["BetaChannel"];
 	        this.TrayTimerFormat = source["TrayTimerFormat"];
 	        this.TrayShowTimer = source["TrayShowTimer"];
+	        this.LaunchOnStartup = source["LaunchOnStartup"];
+	        this.SummaryWordLimit = source["SummaryWordLimit"];
+	        this.LogRoundingMin = source["LogRoundingMin"];
 	    }
 	}
 

@@ -17,6 +17,7 @@ func TestLoad_Success(t *testing.T) {
 	os.Setenv("JIRA_API_TOKEN", "test-token")
 	os.Setenv("TRAY_TIMER_FORMAT", "hh:mm")
 	os.Setenv("TRAY_SHOW_TIMER", "false")
+	os.Setenv("LOG_ROUNDING_MINUTES", "15")
 
 	// Cleanup
 	defer func() {
@@ -27,6 +28,7 @@ func TestLoad_Success(t *testing.T) {
 		os.Unsetenv("JIRA_API_TOKEN")
 		os.Unsetenv("TRAY_TIMER_FORMAT")
 		os.Unsetenv("TRAY_SHOW_TIMER")
+		os.Unsetenv("LOG_ROUNDING_MINUTES")
 	}()
 
 	cfg, err := Load()
@@ -45,6 +47,9 @@ func TestLoad_Success(t *testing.T) {
 	}
 	if cfg.TrayShowTimer {
 		t.Errorf("Expected tray timer visibility to be false")
+	}
+	if cfg.LogRoundingMin != 15 {
+		t.Errorf("Expected LogRoundingMin=15, got %d", cfg.LogRoundingMin)
 	}
 }
 
@@ -79,6 +84,7 @@ func TestSave_WritesToConfigDir(t *testing.T) {
 		JiraAPIToken:      "save-token",
 		TrayTimerFormat:   "hh:mm",
 		TrayShowTimer:     false,
+		LogRoundingMin:    30,
 	}
 
 	if err := Save(cfg); err != nil {
@@ -102,6 +108,9 @@ func TestSave_WritesToConfigDir(t *testing.T) {
 	}
 	if envMap["TRAY_SHOW_TIMER"] != "false" {
 		t.Errorf("expected TRAY_SHOW_TIMER=false, got %q", envMap["TRAY_SHOW_TIMER"])
+	}
+	if envMap["LOG_ROUNDING_MINUTES"] != "30" {
+		t.Errorf("expected LOG_ROUNDING_MINUTES=30, got %q", envMap["LOG_ROUNDING_MINUTES"])
 	}
 }
 

@@ -21,6 +21,7 @@ let timerInterval = null;
 let timerStartTime = null;
 let traySelectedTicket = null;
 let traySearchTimeout = null;
+let summaryWordLimit = 0;
 
 // ===== Init =====
 document.addEventListener('DOMContentLoaded', () => {
@@ -101,6 +102,20 @@ function updateThemeIcon(pref, effective) {
 // ===== Ticket Search =====
 let searchTimeout;
 let assignedTickets = []; // cached assigned tickets for focus dropdown
+const maxSummaryWords = 5;
+const supportedLogRoundingMinutes = new Set([0, 5, 10, 15, 30, 60]);
+
+function normalizeSummaryWordLimit(limit) {
+    const parsed = Number.isFinite(limit) ? Math.trunc(limit) : 0;
+    if (parsed < 0) return 0;
+    if (parsed > maxSummaryWords) return maxSummaryWords;
+    return parsed;
+}
+
+function normalizeLogRoundingMin(value) {
+    const parsed = Number.isFinite(value) ? Math.trunc(value) : 0;
+    return supportedLogRoundingMinutes.has(parsed) ? parsed : 0;
+}
 
 function initTicketSearch() {
     const input = document.getElementById('ticket-search');
@@ -216,13 +231,17 @@ function renderDropdown(tickets, dropdown) {
     // Limit to 5 results in the dropdown
     const shown = tickets.slice(0, 5);
 
-    dropdown.innerHTML = shown.map(t => `
-        <div class="dropdown-item" data-key="${t.key}" data-summary="${escapeHtml(t.summary)}" data-status="${t.status}" data-type="${t.issueType}">
+    dropdown.innerHTML = shown.map(t => {
+        const fullSummary = String(t.summary || '').trim();
+        const escapedFullSummary = escapeHtml(fullSummary);
+        return `
+        <div class="dropdown-item" data-key="${t.key}" data-summary="${escapedFullSummary}" data-status="${t.status}" data-type="${t.issueType}">
             <span class="ticket-key">${t.key}</span>
-            <span class="ticket-summary">${escapeHtml(t.summary)}</span>
+            <span class="ticket-summary" title="${escapedFullSummary}">${escapedFullSummary}</span>
             <span class="ticket-type-badge">${t.issueType || 'Task'}</span>
         </div>
-    `).join('');
+    `;
+    }).join('');
 
     dropdown.querySelectorAll('.dropdown-item').forEach(item => {
         item.addEventListener('click', () => {
@@ -315,6 +334,7 @@ async function loadProjects(selectedProjectID = '') {
 function initTimer() {
     document.getElementById('timer-start-btn').addEventListener('click', startTimer);
     document.getElementById('timer-stop-btn').addEventListener('click', stopTimer);
+    document.getElementById('timer-cancel-btn').addEventListener('click', cancelTimer);
 }
 
 async function startTimer() {
@@ -354,9 +374,28 @@ async function stopTimer() {
     }
 }
 
+async function cancelTimer() {
+    try {
+        await App.CancelTimer();
+        clearTimerUI();
+        showToast('Timer canceled — entry discarded', 'info');
+        refreshHistory();
+    } catch (err) {
+        const message = String(err || '');
+        if (message.includes('no timer is running')) {
+            clearTimerUI();
+            await checkTimerStatus();
+            showToast('No running timer to cancel.', 'info');
+            return;
+        }
+        showToast('Failed to cancel timer: ' + err, 'error');
+    }
+}
+
 function showTimerRunning(ticketKey, summary) {
     document.getElementById('timer-start-btn').classList.add('hidden');
     document.getElementById('timer-stop-btn').classList.remove('hidden');
+    document.getElementById('timer-cancel-btn').classList.remove('hidden');
 
     // In the new layout, we don't have a specific label for the ticket next to the timer, 
     // it's handled by the global ticket selector. We just update the status label.
@@ -375,6 +414,7 @@ function showTimerRunning(ticketKey, summary) {
 function clearTimerUI() {
     document.getElementById('timer-start-btn').classList.remove('hidden');
     document.getElementById('timer-stop-btn').classList.add('hidden');
+    document.getElementById('timer-cancel-btn').classList.add('hidden');
 
     const statusLabel = document.getElementById('timer-status-label');
     if (statusLabel) statusLabel.textContent = 'IDLE';
@@ -504,12 +544,14 @@ function renderHistory(entries) {
         const startStr = new Date(e.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const endStr = e.end ? new Date(e.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
         const dateStr = new Date(e.start).toLocaleDateString([], { month: 'short', day: 'numeric' });
+        const fullSummary = String(e.ticketSummary || e.description || '').trim();
+        const escapedFullSummary = escapeHtml(fullSummary);
 
         return `
             <div class="history-entry" data-id="${e.id}">
                 <span class="entry-ticket">${e.ticketKey || '—'}</span>
                 <div class="entry-details">
-                    <span class="entry-description">${escapeHtml(e.ticketSummary || e.description || '')}</span>
+                    <span class="entry-description" title="${escapedFullSummary}">${escapedFullSummary}</span>
                     <span class="entry-time">${dateStr} · ${startStr} → ${endStr}</span>
                 </div>
                 <span class="entry-duration">${formatDuration(e.duration)}</span>
@@ -706,13 +748,17 @@ function renderTrayTicketDropdown(tickets) {
     }
 
     const shown = tickets.slice(0, 6);
-    results.innerHTML = shown.map(t => `
-        <div class="dropdown-item" data-key="${t.key}" data-summary="${escapeHtml(t.summary || '')}">
+    results.innerHTML = shown.map(t => {
+        const fullSummary = String(t.summary || '').trim();
+        const escapedFullSummary = escapeHtml(fullSummary);
+        return `
+        <div class="dropdown-item" data-key="${t.key}" data-summary="${escapedFullSummary}">
             <span class="ticket-key">${t.key}</span>
-            <span class="ticket-summary">${escapeHtml(t.summary || '')}</span>
+            <span class="ticket-summary" title="${escapedFullSummary}">${escapedFullSummary}</span>
             <span class="ticket-type-badge">${t.issueType || 'Task'}</span>
         </div>
-    `).join('');
+    `;
+    }).join('');
 
     results.querySelectorAll('.dropdown-item').forEach(item => {
         item.addEventListener('click', () => {
@@ -821,11 +867,23 @@ function initBranchDetection() {
                 showToast('Tray timer stopped', 'success');
             }
         });
+        window.runtime.EventsOn('tray-timer-canceled', async (ticketKey) => {
+            await checkTimerStatus();
+            await refreshHistory();
+            if (ticketKey) {
+                showToast(`Tray timer canceled for ${ticketKey}`, 'info');
+            } else {
+                showToast('Tray timer canceled', 'info');
+            }
+        });
         window.runtime.EventsOn('tray-start-timer-error', (message) => {
             showToast(`Tray start failed: ${message}`, 'error');
         });
         window.runtime.EventsOn('tray-stop-timer-error', (message) => {
             showToast(`Tray stop failed: ${message}`, 'error');
+        });
+        window.runtime.EventsOn('tray-cancel-timer-error', (message) => {
+            showToast(`Tray cancel failed: ${message}`, 'error');
         });
         window.runtime.EventsOn('window-visibility-changed', async (visible) => {
             if (visible) {
@@ -1148,6 +1206,12 @@ function initSettings() {
                 document.getElementById('setting-tray-show-timer').checked = cfg.TrayShowTimer !== false;
                 document.getElementById('setting-tray-timer-format').value = cfg.TrayTimerFormat || 'hh:mm:ss';
                 document.getElementById('setting-tray-timer-format').disabled = !document.getElementById('setting-tray-show-timer').checked;
+                document.getElementById('setting-launch-on-startup').checked = cfg.LaunchOnStartup === true;
+                summaryWordLimit = normalizeSummaryWordLimit(Number(cfg.SummaryWordLimit ?? 0));
+                document.getElementById('setting-summary-word-limit').value = String(summaryWordLimit);
+                document.getElementById('setting-log-rounding-min').value = String(
+                    normalizeLogRoundingMin(Number(cfg.LogRoundingMin ?? 0))
+                );
 
                 // Load workspaces if API key is present
                 if (cfg.ClockifyAPIKey) {
@@ -1184,6 +1248,12 @@ function initSettings() {
         e.preventDefault();
 
         const wsVal = document.getElementById('setting-clockify-ws').value.trim();
+        const selectedSummaryWordLimit = normalizeSummaryWordLimit(
+            parseInt(document.getElementById('setting-summary-word-limit').value, 10)
+        );
+        const selectedLogRoundingMin = normalizeLogRoundingMin(
+            parseInt(document.getElementById('setting-log-rounding-min').value, 10)
+        );
         const config = {
             ClockifyAPIKey: document.getElementById('setting-clockify-key').value.trim(),
             ClockifyWorkspace: (wsVal && wsVal !== 'undefined') ? wsVal : '',
@@ -1192,12 +1262,17 @@ function initSettings() {
             JiraAPIToken: document.getElementById('setting-jira-token').value.trim(),
             TrayTimerFormat: document.getElementById('setting-tray-timer-format').value || 'hh:mm:ss',
             TrayShowTimer: document.getElementById('setting-tray-show-timer').checked,
+            LaunchOnStartup: document.getElementById('setting-launch-on-startup').checked,
+            SummaryWordLimit: selectedSummaryWordLimit,
+            LogRoundingMin: selectedLogRoundingMin,
         };
 
         try {
             if (App.SaveConfig) {
                 await App.SaveConfig(config);
+                summaryWordLimit = selectedSummaryWordLimit;
                 await loadProjects();
+                await refreshHistory();
                 showToast('Settings saved successfully', 'success');
             } else {
                 showToast('SaveConfig not implemented in backend yet', 'info');

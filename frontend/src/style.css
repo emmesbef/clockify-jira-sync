@@ -485,7 +485,7 @@ body {
 
 .dropdown-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: var(--space-sm);
     padding: 10px 14px;
     cursor: pointer;
@@ -511,9 +511,11 @@ body {
 .dropdown-item .ticket-summary {
     color: var(--text-primary);
     font-size: 13px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    word-break: break-word;
+    line-height: 1.3;
     flex: 1;
 }
 

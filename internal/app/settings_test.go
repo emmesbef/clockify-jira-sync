@@ -55,6 +55,84 @@ func TestSaveConfigPersistsWorkspace(t *testing.T) {
 	}
 }
 
+func TestSaveConfigAppliesLaunchOnStartupAndSummaryLimit(t *testing.T) {
+	tmpDir := t.TempDir()
+	config.SetConfigDir(tmpDir)
+	defer config.SetConfigDir("")
+
+	mockSrv := mockserver.Start()
+	defer mockSrv.Close()
+
+	a := NewApp(&config.Config{
+		ClockifyAPIKey:    "old-key",
+		ClockifyWorkspace: "old-workspace",
+		JiraBaseURL:       "https://example.atlassian.net",
+		JiraEmail:         "old@example.com",
+		JiraAPIToken:      "old-token",
+		LaunchOnStartup:   false,
+		SummaryWordLimit:  0,
+	}, "test")
+	a.SetMockMode(mockSrv.URL)
+
+	origApplyLaunchOnStartup := applyLaunchOnStartup
+	t.Cleanup(func() {
+		applyLaunchOnStartup = origApplyLaunchOnStartup
+	})
+
+	called := false
+	appliedValue := false
+	applyLaunchOnStartup = func(enabled bool) error {
+		called = true
+		appliedValue = enabled
+		return nil
+	}
+
+	err := a.SaveConfig(config.Config{
+		ClockifyAPIKey:    "new-key",
+		ClockifyWorkspace: "new-workspace",
+		JiraBaseURL:       "https://new-example.atlassian.net",
+		JiraEmail:         "new@example.com",
+		JiraAPIToken:      "new-token",
+		LaunchOnStartup:   true,
+		SummaryWordLimit:  99,
+		LogRoundingMin:    17,
+	})
+	if err != nil {
+		t.Fatalf("SaveConfig returned error: %v", err)
+	}
+
+	if !called {
+		t.Fatalf("expected launch-on-startup hook to be called")
+	}
+	if !appliedValue {
+		t.Fatalf("expected launch-on-startup hook to be called with true")
+	}
+	if !a.cfg.LaunchOnStartup {
+		t.Fatalf("expected LaunchOnStartup to be true")
+	}
+	if a.cfg.SummaryWordLimit != 5 {
+		t.Fatalf("expected SummaryWordLimit to be normalized to 5, got %d", a.cfg.SummaryWordLimit)
+	}
+	if a.cfg.LogRoundingMin != 0 {
+		t.Fatalf("expected LogRoundingMin to normalize to 0 for unsupported values, got %d", a.cfg.LogRoundingMin)
+	}
+
+	envPath := filepath.Join(tmpDir, ".env")
+	envMap, err := godotenv.Read(envPath)
+	if err != nil {
+		t.Fatalf("failed to read persisted .env file: %v", err)
+	}
+	if envMap["LAUNCH_ON_STARTUP"] != "true" {
+		t.Fatalf("expected LAUNCH_ON_STARTUP=true, got %q", envMap["LAUNCH_ON_STARTUP"])
+	}
+	if envMap["SUMMARY_WORD_LIMIT"] != "5" {
+		t.Fatalf("expected SUMMARY_WORD_LIMIT=5, got %q", envMap["SUMMARY_WORD_LIMIT"])
+	}
+	if envMap["LOG_ROUNDING_MINUTES"] != "0" {
+		t.Fatalf("expected LOG_ROUNDING_MINUTES=0, got %q", envMap["LOG_ROUNDING_MINUTES"])
+	}
+}
+
 func TestSaveConfigPreservesUpdatePreferences(t *testing.T) {
 	tmpDir := t.TempDir()
 	config.SetConfigDir(tmpDir)

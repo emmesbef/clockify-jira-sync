@@ -578,6 +578,96 @@ func TestStartTimerAndStopTimerLifecycle(t *testing.T) {
 	}
 }
 
+func TestStopTimerRoundsDurationWhenConfigured(t *testing.T) {
+	app, mock := newFlowApp(t)
+	app.cfg.LogRoundingMin = 15
+
+	timer, err := app.StartTimer("PROJ-101", "", "")
+	if err != nil {
+		t.Fatalf("StartTimer returned error: %v", err)
+	}
+	runningClockifyID := timer.ClockifyID
+
+	app.mu.Lock()
+	startedAt := time.Now().Add(-7*time.Minute - 5*time.Second).Truncate(time.Second)
+	app.timer.StartedAt = startedAt
+	app.mu.Unlock()
+
+	entry, err := app.StopTimer()
+	if err != nil {
+		t.Fatalf("StopTimer returned error: %v", err)
+	}
+
+	if entry.Duration != 900 {
+		t.Fatalf("expected rounded duration 900 seconds, got %d", entry.Duration)
+	}
+	if !entry.End.Equal(startedAt.Add(15 * time.Minute)) {
+		t.Fatalf("expected rounded end time %s, got %s", startedAt.Add(15*time.Minute), entry.End)
+	}
+
+	mock.mu.Lock()
+	if len(mock.updatedClockify) != 1 {
+		mock.mu.Unlock()
+		t.Fatalf("expected one Clockify update for rounded duration, got %d", len(mock.updatedClockify))
+	}
+	roundedClockify := mock.updatedClockify[0]
+	if len(mock.addedWorklogs) != 1 {
+		mock.mu.Unlock()
+		t.Fatalf("expected one Jira worklog, got %d", len(mock.addedWorklogs))
+	}
+	worklog := mock.addedWorklogs[0]
+	mock.mu.Unlock()
+
+	if roundedClockify.EntryID != runningClockifyID {
+		t.Fatalf("expected Clockify update to target running entry %q, got %q", runningClockifyID, roundedClockify.EntryID)
+	}
+	if !roundedClockify.Start.Equal(startedAt) || !roundedClockify.End.Equal(startedAt.Add(15*time.Minute)) {
+		t.Fatalf("expected Clockify rounded range %s-%s, got %s-%s",
+			startedAt, startedAt.Add(15*time.Minute), roundedClockify.Start, roundedClockify.End)
+	}
+	if worklog.TimeSpentSeconds != 900 {
+		t.Fatalf("expected Jira rounded duration 900, got %d", worklog.TimeSpentSeconds)
+	}
+}
+
+func TestCancelTimerDiscardsRunningEntry(t *testing.T) {
+	app, mock := newFlowApp(t)
+
+	timer, err := app.StartTimer("PROJ-101", "", "")
+	if err != nil {
+		t.Fatalf("StartTimer returned error: %v", err)
+	}
+	runningClockifyID := timer.ClockifyID
+
+	if err := app.CancelTimer(); err != nil {
+		t.Fatalf("CancelTimer returned error: %v", err)
+	}
+
+	status := app.GetTimerStatus()
+	if status.Running {
+		t.Fatalf("expected timer to be cleared after cancellation")
+	}
+	if len(app.GetHistory()) != 0 {
+		t.Fatalf("expected canceled timer not to be added to history")
+	}
+
+	mock.mu.Lock()
+	if len(mock.deletedClockify) != 1 {
+		mock.mu.Unlock()
+		t.Fatalf("expected one Clockify delete call, got %d", len(mock.deletedClockify))
+	}
+	deletedID := mock.deletedClockify[0]
+	addedWorklogs := len(mock.addedWorklogs)
+	mock.mu.Unlock()
+
+	if deletedID != runningClockifyID {
+		t.Fatalf("expected canceled Clockify ID %q, got %q", runningClockifyID, deletedID)
+	}
+	if addedWorklogs != 0 {
+		t.Fatalf("expected no Jira worklog on cancel, got %d", addedWorklogs)
+	}
+}
+
 func TestAddManualEntryValidatesAndCreatesEntries(t *testing.T) {
 	t.Run("rejects invalid requests before hitting integrations", func(t *testing.T) {
 		testCases := []struct {
@@ -690,6 +780,48 @@ func TestAddManualEntryValidatesAndCreatesEntries(t *testing.T) {
 		}
 		if worklog.IssueKey != "PROJ-101" || worklog.Comment != entry.Description || worklog.TimeSpentSeconds != 8100 {
 			t.Fatalf("unexpected Jira worklog payload: %+v", worklog)
+		}
+	})
+
+	t.Run("rounds manual entries when configured", func(t *testing.T) {
+		app, mock := newFlowApp(t)
+		app.cfg.LogRoundingMin = 15
+
+		entry, err := app.AddManualEntry(models.ManualEntryRequest{
+			TicketKey: "PROJ-101",
+			Date:      "2024-03-15",
+			StartTime: "09:30",
+			EndTime:   "09:37",
+		})
+		if err != nil {
+			t.Fatalf("AddManualEntry returned error: %v", err)
+		}
+
+		if entry.Duration != 900 {
+			t.Fatalf("expected rounded manual duration 900 seconds, got %d", entry.Duration)
+		}
+		if !entry.End.Equal(entry.Start.Add(15 * time.Minute)) {
+			t.Fatalf("expected rounded manual end %s, got %s", entry.Start.Add(15*time.Minute), entry.End)
+		}
+
+		mock.mu.Lock()
+		if len(mock.createdClockify) != 1 {
+			mock.mu.Unlock()
+			t.Fatalf("expected one Clockify create call, got %d", len(mock.createdClockify))
+		}
+		createCall := mock.createdClockify[0]
+		if len(mock.addedWorklogs) != 1 {
+			mock.mu.Unlock()
+			t.Fatalf("expected one Jira worklog call, got %d", len(mock.addedWorklogs))
+		}
+		worklog := mock.addedWorklogs[0]
+		mock.mu.Unlock()
+
+		if createCall.End == nil || !createCall.End.Equal(entry.End) {
+			t.Fatalf("expected Clockify rounded end %s, got %v", entry.End, createCall.End)
+		}
+		if worklog.TimeSpentSeconds != 900 {
+			t.Fatalf("expected Jira rounded duration 900, got %d", worklog.TimeSpentSeconds)
 		}
 	})
 }

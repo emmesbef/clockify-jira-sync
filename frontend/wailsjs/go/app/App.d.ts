@@ -9,6 +9,8 @@ export function AddManualEntry(arg1:models.ManualEntryRequest):Promise<models.Ti
 
 export function ApplyUpdate(arg1:models.UpdateInfo):Promise<void>;
 
+export function CancelTimer():Promise<void>;
+
 export function CheckForUpdates():Promise<models.UpdateInfo>;
 
 export function CheckStartupUpdate():Promise<void>;
