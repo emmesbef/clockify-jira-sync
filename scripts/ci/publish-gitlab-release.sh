@@ -81,6 +81,7 @@ add_release_link() {
   local link_name="$1"
   local target_name="$2"
   local link_url="${download_base}/${target_name}"
+  local direct_asset_path="/${target_name}"
   if jq -e \
     --arg name "$link_name" \
     --arg url "$link_url" \
@@ -92,7 +93,8 @@ add_release_link() {
     jq -c \
       --arg name "$link_name" \
       --arg url "$link_url" \
-      '. + [{name: $name, url: $url, link_type: "package"}]' \
+      --arg direct_asset_path "$direct_asset_path" \
+      '. + [{name: $name, url: $url, direct_asset_path: $direct_asset_path, link_type: "package"}]' \
       <<<"$assets_links_json"
   )"
 }
