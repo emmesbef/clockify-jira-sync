@@ -108,21 +108,23 @@ wails build
 
 ## Release versioning
 
-- Releases are tag-driven in GitLab CI (`v*` tags).
-- Create and push a tag to trigger release packaging:
+- Releases remain tag-driven in GitLab CI (`v*` tags).
+- Default-branch pipelines now auto-create and push a missing `vX.Y.Z` tag from `wails.json` (`info.productVersion`) after build/test/docs/deploy stages succeed.
+- That pushed tag triggers the release pipeline, which packages assets and publishes/updates the matching GitLab Release.
+- Manual tagging is still supported:
 
 ```bash
 git tag v1.11.0
 git push origin v1.11.0
 ```
 
-- The release pipeline builds macOS and Windows assets, generates a `SHA256SUMS` file, uploads assets to GitLab Package Registry, and publishes/updates the matching GitLab Release.
-- Optional `GITLAB_TOKEN` (API scope) can be provided in CI variables to create/update releases when job-token restrictions are enabled.
+- Optional `GITLAB_TOKEN` (API scope) can be provided in CI variables for tag push/release API operations when job-token restrictions are enabled.
 
 ## CI / release / docs pages overview
 
 - **GitLab CI config**: [`/.gitlab-ci.yml`](./.gitlab-ci.yml)
-  - Runs backend/frontend tests, combined coverage generation, build checks, docs checks/build, release packaging, and Pages deployment.
+  - Runs ordered stages: `build -> test -> docs -> deploy -> release`.
+  - Includes backend/frontend tests, combined coverage generation, docs freshness/build, docs deployment, and release packaging/publishing.
 - **Pipelines**: https://gitlab.com/level-87/clockify-jira-sync/-/pipelines
 - **GitLab Releases**: https://gitlab.com/level-87/clockify-jira-sync/-/releases
 - **GitLab Pages site**: https://level-87.gitlab.io/

@@ -100,7 +100,7 @@ type typeField struct {
 
 // GetMyIssues fetches issues assigned to the authenticated user
 func (c *Client) GetMyIssues() ([]models.JiraTicket, error) {
-	jql := "assignee=currentUser() AND status != Done ORDER BY updated DESC"
+	jql := "assignee=currentUser() ORDER BY updated DESC"
 	return c.searchWithJQL(jql, 50)
 }
 
@@ -171,18 +171,29 @@ func (c *Client) SearchIssues(query string) ([]models.JiraTicket, error) {
 		projectPrefix := strings.ToUpper(matches[1])
 		number := matches[2]
 
+		// Fast path: exact issue key lookup should not depend on project metadata
+		// and must work for tickets in any workflow status.
+		if number != "" {
+			exactKey := fmt.Sprintf("%s-%s", projectPrefix, number)
+			exactJQL := fmt.Sprintf(`key = "%s" ORDER BY updated DESC`, exactKey)
+			exactResults, err := c.searchWithJQL(exactJQL, 1)
+			if err == nil && len(exactResults) > 0 {
+				return exactResults, nil
+			}
+		}
+
 		matchingProjects := c.findProjectsByPrefix(projectPrefix)
 		if len(matchingProjects) > 0 {
 			projectList := `"` + strings.Join(matchingProjects, `", "`) + `"`
 			var jql string
 			if number != "" {
 				jql = fmt.Sprintf(
-					`project in (%s) AND status != Done ORDER BY key ASC`,
+					`project in (%s) ORDER BY key ASC`,
 					projectList,
 				)
 			} else {
 				jql = fmt.Sprintf(
-					`project in (%s) AND status != Done ORDER BY updated DESC`,
+					`project in (%s) ORDER BY updated DESC`,
 					projectList,
 				)
 			}
@@ -212,7 +223,7 @@ func (c *Client) SearchIssues(query string) ([]models.JiraTicket, error) {
 		if len(matchingProjects) > 0 {
 			projectList := `"` + strings.Join(matchingProjects, `", "`) + `"`
 			jql := fmt.Sprintf(
-				`project in (%s) AND status != Done ORDER BY updated DESC`,
+				`project in (%s) ORDER BY updated DESC`,
 				projectList,
 			)
 			results, err := c.searchWithJQL(jql, 50)
@@ -226,7 +237,7 @@ func (c *Client) SearchIssues(query string) ([]models.JiraTicket, error) {
 	// Text search on summary and description
 	escaped := escapeJQLText(trimmed)
 	jql := fmt.Sprintf(
-		`(summary ~ "%s" OR description ~ "%s") AND status != Done ORDER BY updated DESC`,
+		`(summary ~ "%s" OR description ~ "%s") ORDER BY updated DESC`,
 		escaped, escaped,
 	)
 	return c.searchWithJQL(jql, 20)
