@@ -13,7 +13,16 @@ variables:
   before_script:
     - apt-get update
     - apt-get install -y --no-install-recommends curl xz-utils ca-certificates git zip
-    - curl -fsSL https://nodejs.org/dist/v20.19.0/node-v20.19.0-linux-x64.tar.xz -o /tmp/node.tar.xz
+    - |
+      case "$(uname -m)" in
+        x86_64|amd64) node_arch="x64" ;;
+        aarch64|arm64) node_arch="arm64" ;;
+        *)
+          echo "Unsupported architecture for Node.js bootstrap: $(uname -m)" >&2
+          exit 1
+          ;;
+      esac
+      curl -fsSL "https://nodejs.org/dist/v20.19.0/node-v20.19.0-linux-${node_arch}.tar.xz" -o /tmp/node.tar.xz
     - tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1
     - rm -rf /var/lib/apt/lists/*
     - node --version
