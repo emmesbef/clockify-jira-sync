@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"embed"
 	"log"
 	"runtime"
@@ -18,13 +19,35 @@ import (
 // version is set at build time via -ldflags "-X main.version=..."
 var version = "dev"
 
+//go:embed wails.json
+var wailsConfigJSON []byte
+
 //go:embed all:frontend/dist
 var assets embed.FS
 
 //go:embed build/tray-icon.png
 var trayIcon []byte
 
+func resolveVersion() string {
+	if version != "" && version != "dev" {
+		return version
+	}
+
+	var cfg struct {
+		Info struct {
+			ProductVersion string `json:"productVersion"`
+		} `json:"info"`
+	}
+	if err := json.Unmarshal(wailsConfigJSON, &cfg); err == nil && cfg.Info.ProductVersion != "" {
+		return cfg.Info.ProductVersion
+	}
+
+	return version
+}
+
 func main() {
+	appVersion := resolveVersion()
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
@@ -33,7 +56,7 @@ func main() {
 	}
 
 	// Create main application
-	application := app.NewApp(cfg, version)
+	application := app.NewApp(cfg, appVersion)
 
 	// Inject mock server if mock mode is on
 	if cfg.MockMode {
@@ -44,7 +67,7 @@ func main() {
 
 	// Initialize tray (macOS only — uses dispatch_async so safe to call before run loop)
 	if runtime.GOOS == "darwin" {
-		application.InitTray(version, trayIcon)
+		application.InitTray(appVersion, trayIcon)
 	}
 
 	// Start Wails
@@ -80,7 +103,7 @@ func main() {
 			WebviewIsTransparent: true,
 			WindowIsTranslucent:  true,
 			About: &mac.AboutInfo{
-				Title:   "JiraFy Clockwork v" + version,
+				Title:   "JiraFy Clockwork v" + appVersion,
 				Message: "A desktop time tracker that syncs between Clockify and Jira.\n\n© 2026 Fabian Emmesberger\nEmail: info@level-87.dev\nLicense: MIT Licensed",
 			},
 		},
