@@ -56,7 +56,8 @@ brew install --cask emmesbef/tap/jirafy-clockwork
 To update:
 
 ```bash
-brew upgrade --cask jirafy-clockwork
+brew update
+brew upgrade --cask emmesbef/tap/jirafy-clockwork
 ```
 
 Tap maintainers should point the cask URL at GitLab-hosted release assets:

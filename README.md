@@ -111,6 +111,7 @@ wails build
 - Releases remain tag-driven in GitLab CI (`v*` tags).
 - Default-branch pipelines now auto-create and push a missing `vX.Y.Z` tag from `wails.json` (`info.productVersion`) after build/test/docs/deploy stages succeed.
 - That pushed tag triggers the release pipeline, which packages assets and publishes/updates the matching GitLab Release.
+- When `HOMEBREW_TAP_TOKEN` is set, tag release pipelines also update `emmesbef/homebrew-tap` (`Casks/jirafy-clockwork.rb`) to the new version and macOS SHA256 so Homebrew upgrades detect new releases.
 - Manual tagging is still supported:
 
 ```bash
@@ -119,6 +120,7 @@ git push origin v1.11.0
 ```
 
 - Optional `GITLAB_TOKEN` (API scope) can be provided in CI variables for tag push/release API operations when job-token restrictions are enabled.
+- Optional `HOMEBREW_TAP_TOKEN` (GitHub token with contents write access to `emmesbef/homebrew-tap`) enables automatic cask bump commits.
 
 ## CI / release / docs pages overview
 
