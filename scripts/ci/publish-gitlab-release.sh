@@ -71,13 +71,18 @@ assets_links_json='[]'
 add_release_link() {
   local link_name="$1"
   local target_name="$2"
-  if jq -e --arg name "$link_name" 'any(.[]; .name == $name)' <<<"$assets_links_json" >/dev/null; then
+  local link_url="${download_base}/${target_name}"
+  if jq -e \
+    --arg name "$link_name" \
+    --arg url "$link_url" \
+    'any(.[]; .name == $name or .url == $url)' \
+    <<<"$assets_links_json" >/dev/null; then
     return
   fi
   assets_links_json="$(
     jq -c \
       --arg name "$link_name" \
-      --arg url "${download_base}/${target_name}" \
+      --arg url "$link_url" \
       '. + [{name: $name, url: $url, link_type: "package"}]' \
       <<<"$assets_links_json"
   )"
@@ -113,14 +118,15 @@ create_payload="$(
   jq -n \
     --arg name "$TAG" \
     --arg tag "$TAG" \
+    --arg ref "${CI_COMMIT_SHA:-}" \
     --arg description "$release_description" \
     --argjson links "$assets_links_json" \
-    '{
+    '({
       name: $name,
       tag_name: $tag,
       description: $description,
       assets: { links: $links }
-    }'
+    } + (if $ref != "" then { ref: $ref } else {} end))'
 )"
 
 update_payload="$(
