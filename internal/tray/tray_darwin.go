@@ -17,7 +17,7 @@ var (
 	onQuit               func()
 	onCheckUpdates       func()
 	onStartTimer         func(ticketKey, description string)
-	onStopTimer          func()
+	onStopTimer          func(comment string)
 	onCancelTimer        func()
 	onLoadAssignedTicket func() string
 	onSearchTicket       func(query string) string
@@ -29,7 +29,7 @@ var (
 // onQuitFn is called when "Quit" is clicked.
 // onCheckUpdatesFn is called when "Check for Updates…" is clicked.
 // onStartTimerFn is called when "Start Timer…" is submitted.
-// onStopTimerFn is called when "Stop Timer" is clicked.
+// onStopTimerFn is called when "Stop Timer" is confirmed, with optional comment text.
 // onCancelTimerFn is called when "Cancel Timer" is clicked.
 // onLoadAssignedTicketFn loads the top assigned tickets for empty/focus state.
 // onSearchTicketFn loads matching tickets for a non-empty query.
@@ -40,7 +40,7 @@ func Init(
 	onQuitFn func(),
 	onCheckUpdatesFn func(),
 	onStartTimerFn func(ticketKey, description string),
-	onStopTimerFn func(),
+	onStopTimerFn func(comment string),
 	onCancelTimerFn func(),
 	onLoadAssignedTicketFn func() string,
 	onSearchTicketFn func(query string) string,
@@ -138,9 +138,13 @@ func goTrayStartTimer(ticketKey *C.char, description *C.char) {
 }
 
 //export goTrayStopTimer
-func goTrayStopTimer() {
+func goTrayStopTimer(comment *C.char) {
 	if onStopTimer != nil {
-		onStopTimer()
+		if comment == nil {
+			onStopTimer("")
+			return
+		}
+		onStopTimer(C.GoString(comment))
 	}
 }
 

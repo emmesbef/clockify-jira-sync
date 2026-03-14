@@ -755,6 +755,22 @@ body {
     font-size: 12px;
 }
 
+.history-entry .entry-ticket-link {
+    background: none;
+    border: none;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+}
+
+.history-entry .entry-ticket-link:hover {
+    text-decoration: underline;
+}
+
+.history-entry .entry-ticket-placeholder {
+    color: var(--text-tertiary);
+}
+
 .history-entry .entry-details {
     display: flex;
     flex-direction: column;

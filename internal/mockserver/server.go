@@ -62,6 +62,13 @@ func Start() *httptest.Server {
 
 		// Jira get issue
 		if strings.Contains(r.URL.Path, "/rest/api/3/issue/") && !strings.Contains(r.URL.Path, "worklog") {
+			// Jira Add Issue Comment
+			if strings.HasSuffix(r.URL.Path, "/comment") && r.Method == "POST" {
+				w.WriteHeader(http.StatusCreated)
+				json.NewEncoder(w).Encode(map[string]string{"id": fmt.Sprintf("cmt-mock-%d", time.Now().UnixNano())})
+				return
+			}
+
 			parts := strings.Split(r.URL.Path, "/")
 			key := parts[len(parts)-1]
 

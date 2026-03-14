@@ -10,7 +10,7 @@ func Init(
 	onQuit func(),
 	onCheckUpdates func(),
 	onStartTimer func(ticketKey, description string),
-	onStopTimer func(),
+	onStopTimer func(comment string),
 	onCancelTimer func(),
 	onLoadAssignedTickets func() string,
 	onSearchTickets func(query string) string,

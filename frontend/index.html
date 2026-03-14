@@ -361,6 +361,26 @@
         </div>
     </div>
 
+    <!-- Stop Timer Comment Modal -->
+    <div id="stop-timer-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <h3 class="modal-title">Stop Timer</h3>
+            <form id="stop-comment-form" class="form">
+                <div class="form-group">
+                    <label class="label">Jira Comment (optional)</label>
+                    <input type="text" id="stop-comment-input" class="input"
+                        placeholder="Add a comment to the Jira issue..." />
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" id="stop-comment-cancel-btn" class="btn btn-ghost">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Stop Timer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div id="toast-container"></div>
 

@@ -187,6 +187,37 @@ func TestAddWorklog(t *testing.T) {
 	}
 }
 
+func TestAddIssueComment(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasSuffix(r.URL.Path, "/issue/PROJ-123/comment") {
+			t.Errorf("Unexpected path: %s", r.URL.Path)
+		}
+		if r.Method != http.MethodPost {
+			t.Errorf("Expected POST, got %s", r.Method)
+		}
+
+		body, _ := io.ReadAll(r.Body)
+		var req issueCommentRequest
+		_ = json.Unmarshal(body, &req)
+
+		if req.Body == nil || len(req.Body.Content) == 0 || len(req.Body.Content[0].Content) == 0 {
+			t.Fatalf("expected non-empty ADF issue comment body")
+		}
+		if req.Body.Content[0].Content[0].Text != "Deployment verified in staging" {
+			t.Fatalf("expected issue comment text to round-trip, got %q", req.Body.Content[0].Content[0].Text)
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": "10001"})
+	}))
+	defer mockServer.Close()
+
+	client := NewClient(mockServer.URL, "test@example.com", "token")
+	if err := client.AddIssueComment("PROJ-123", "Deployment verified in staging"); err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+}
+
 func TestPing(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/rest/api/3/myself" {

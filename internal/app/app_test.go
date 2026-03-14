@@ -58,6 +58,11 @@ type jiraDeleteCall struct {
 	WorklogID string
 }
 
+type jiraIssueCommentCall struct {
+	IssueKey string
+	Comment  string
+}
+
 type clockifyEntry struct {
 	ID          string
 	Description string
@@ -86,6 +91,7 @@ type appFlowMock struct {
 	addedWorklogs   []jiraWorklogCall
 	updatedWorklogs []jiraWorklogCall
 	deletedWorklogs []jiraDeleteCall
+	issueComments   []jiraIssueCommentCall
 }
 
 func newAppFlowMock(t *testing.T) *appFlowMock {
@@ -216,6 +222,28 @@ func (m *appFlowMock) handleJiraIssue(w http.ResponseWriter, r *http.Request) {
 				"issuetype": map[string]string{"name": "Task"},
 			},
 		})
+	case len(parts) == 6 && parts[5] == "comment" && r.Method == http.MethodPost:
+		var body struct {
+			Body *adfDoc `json:"body"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			m.writeHandlerError(w, "failed to decode Jira issue comment body: %v", err)
+			return
+		}
+
+		comment := ""
+		if body.Body != nil && len(body.Body.Content) > 0 && len(body.Body.Content[0].Content) > 0 {
+			comment = body.Body.Content[0].Content[0].Text
+		}
+
+		m.mu.Lock()
+		m.issueComments = append(m.issueComments, jiraIssueCommentCall{
+			IssueKey: issueKey,
+			Comment:  comment,
+		})
+		m.mu.Unlock()
+
+		m.writeJSON(w, http.StatusCreated, map[string]string{"id": fmt.Sprintf("cmt-%d", time.Now().UnixNano())})
 	case len(parts) == 6 && parts[5] == "worklog" && r.Method == http.MethodGet:
 		// Return worklogs for this issue
 		m.mu.Lock()
@@ -562,6 +590,7 @@ func TestStartTimerAndStopTimerLifecycle(t *testing.T) {
 		t.Fatalf("expected one Jira worklog to be added, got %d", len(mock.addedWorklogs))
 	}
 	worklog := mock.addedWorklogs[0]
+	issueCommentCount := len(mock.issueComments)
 	mock.mu.Unlock()
 
 	if worklog.IssueKey != "PROJ-101" {
@@ -575,6 +604,40 @@ func TestStartTimerAndStopTimerLifecycle(t *testing.T) {
 	}
 	if !worklog.Started.Equal(expectedStartedAt) {
 		t.Fatalf("expected Jira worklog start %s, got %s", expectedStartedAt, worklog.Started)
+	}
+	if issueCommentCount != 0 {
+		t.Fatalf("expected no Jira issue comment when stopping without comment, got %d", issueCommentCount)
+	}
+}
+
+func TestStopTimerWithCommentPostsIssueComment(t *testing.T) {
+	app, mock := newFlowApp(t)
+
+	if _, err := app.StartTimer("PROJ-101", "", ""); err != nil {
+		t.Fatalf("StartTimer returned error: %v", err)
+	}
+
+	app.mu.Lock()
+	app.timer.StartedAt = time.Now().Add(-2 * time.Minute).Truncate(time.Second)
+	app.mu.Unlock()
+
+	if _, err := app.StopTimerWithComment("  Deployment validated in staging  "); err != nil {
+		t.Fatalf("StopTimerWithComment returned error: %v", err)
+	}
+
+	mock.mu.Lock()
+	if len(mock.issueComments) != 1 {
+		mock.mu.Unlock()
+		t.Fatalf("expected one Jira issue comment call, got %d", len(mock.issueComments))
+	}
+	commentCall := mock.issueComments[0]
+	mock.mu.Unlock()
+
+	if commentCall.IssueKey != "PROJ-101" {
+		t.Fatalf("expected issue comment on PROJ-101, got %q", commentCall.IssueKey)
+	}
+	if commentCall.Comment != "Deployment validated in staging" {
+		t.Fatalf("expected trimmed issue comment text, got %q", commentCall.Comment)
 	}
 }
 

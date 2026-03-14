@@ -59,6 +59,9 @@ func TestStartServesJiraEndpoints(t *testing.T) {
 	if err := client.UpdateWorklog("DEV-101", worklogID, started, 900, "Updated mock issue"); err != nil {
 		t.Fatalf("UpdateWorklog returned error: %v", err)
 	}
+	if err := client.AddIssueComment("DEV-101", "Added mock issue comment"); err != nil {
+		t.Fatalf("AddIssueComment returned error: %v", err)
+	}
 	if err := client.DeleteWorklog("DEV-101", worklogID); err != nil {
 		t.Fatalf("DeleteWorklog returned error: %v", err)
 	}

@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initTheme();
     initTicketSearch();
     initTimer();
+    initStopTimerModal();
     initManualEntry();
     initHistory();
     initBranchDetection();
@@ -320,7 +321,7 @@ async function loadProjects(selectedProjectID = '') {
 // ===== Timer =====
 function initTimer() {
     document.getElementById('timer-start-btn').addEventListener('click', startTimer);
-    document.getElementById('timer-stop-btn').addEventListener('click', stopTimer);
+    document.getElementById('timer-stop-btn').addEventListener('click', openStopTimerModal);
     document.getElementById('timer-cancel-btn').addEventListener('click', cancelTimer);
 }
 
@@ -342,12 +343,57 @@ async function startTimer() {
     }
 }
 
-async function stopTimer() {
+function initStopTimerModal() {
+    const modal = document.getElementById('stop-timer-modal');
+    const form = document.getElementById('stop-comment-form');
+    const input = document.getElementById('stop-comment-input');
+    const cancelBtn = document.getElementById('stop-comment-cancel-btn');
+    const backdrop = document.querySelector('#stop-timer-modal .modal-backdrop');
+    if (!modal || !form || !input || !cancelBtn || !backdrop) return;
+
+    cancelBtn.addEventListener('click', closeStopTimerModal);
+    backdrop.addEventListener('click', closeStopTimerModal);
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await submitStopTimerWithComment();
+    });
+}
+
+function openStopTimerModal() {
+    const modal = document.getElementById('stop-timer-modal');
+    const input = document.getElementById('stop-comment-input');
+    if (!modal || !input) {
+        stopTimerWithOptionalComment('');
+        return;
+    }
+
+    input.value = '';
+    modal.classList.remove('hidden');
+    setTimeout(() => input.focus(), 0);
+}
+
+function closeStopTimerModal() {
+    document.getElementById('stop-timer-modal')?.classList.add('hidden');
+}
+
+async function submitStopTimerWithComment() {
+    const input = document.getElementById('stop-comment-input');
+    const comment = input?.value?.trim() || '';
+    const stopped = await stopTimerWithOptionalComment(comment);
+    if (stopped) {
+        closeStopTimerModal();
+    }
+}
+
+async function stopTimerWithOptionalComment(comment = '') {
     try {
-        const entry = await App.StopTimer();
+        const entry = App.StopTimerWithComment
+            ? await App.StopTimerWithComment(comment)
+            : await App.StopTimer();
         clearTimerUI();
         showToast(`Timer stopped — ${formatDuration(entry.duration)} logged`, 'success');
         refreshHistory();
+        return true;
     } catch (err) {
         const message = String(err || '');
         if (message.includes('no timer is running')) {
@@ -355,9 +401,10 @@ async function stopTimer() {
             await checkTimerStatus();
             await refreshHistory();
             showToast('Timer was already stopped. Status refreshed.', 'info');
-            return;
+            return true;
         }
         showToast('Failed to stop timer: ' + err, 'error');
+        return false;
     }
 }
 
@@ -528,6 +575,11 @@ function renderHistory(entries) {
     }
 
     container.innerHTML = entries.map(e => {
+        const ticketKey = String(e.ticketKey || '').trim();
+        const escapedTicketKey = escapeHtml(ticketKey);
+        const ticketMarkup = ticketKey
+            ? `<button type="button" class="entry-ticket entry-ticket-link" data-ticket="${escapedTicketKey}" title="Open ${escapedTicketKey} in Jira">${escapedTicketKey}</button>`
+            : '<span class="entry-ticket entry-ticket-placeholder">—</span>';
         const startStr = new Date(e.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const endStr = e.end ? new Date(e.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
         const dateStr = new Date(e.start).toLocaleDateString([], { month: 'short', day: 'numeric' });
@@ -536,7 +588,7 @@ function renderHistory(entries) {
 
         return `
             <div class="history-entry" data-id="${e.id}">
-                <span class="entry-ticket">${e.ticketKey || '—'}</span>
+                ${ticketMarkup}
                 <div class="entry-details">
                     <span class="entry-description" title="${escapedFullSummary}">${escapedFullSummary}</span>
                     <span class="entry-time">${dateStr} · ${startStr} → ${endStr}</span>
@@ -597,6 +649,29 @@ function renderHistory(entries) {
             }
         });
     });
+
+    container.querySelectorAll('.entry-ticket-link').forEach(btn => {
+        btn.addEventListener('click', () => {
+            openJiraTicket(btn.dataset.ticket || '');
+        });
+    });
+}
+
+function openJiraTicket(ticketKey) {
+    const jiraBaseURL = document.getElementById('setting-jira-url')?.value?.trim() || '';
+    const key = String(ticketKey || '').trim().toUpperCase();
+    if (!key) return;
+    if (!jiraBaseURL) {
+        showToast('Jira Base URL is missing. Set it in Settings to open tickets.', 'error');
+        return;
+    }
+
+    const url = `${jiraBaseURL.replace(/\/+$/, '')}/browse/${encodeURIComponent(key)}`;
+    if (wailsRuntime?.BrowserOpenURL) {
+        wailsRuntime.BrowserOpenURL(url);
+        return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 // ===== Edit Modal =====

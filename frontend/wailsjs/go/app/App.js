@@ -110,6 +110,10 @@ export function StopTimer() {
   return window['go']['app']['App']['StopTimer']();
 }
 
+export function StopTimerWithComment(arg1) {
+  return window['go']['app']['App']['StopTimerWithComment'](arg1);
+}
+
 export function UpdateEntry(arg1) {
   return window['go']['app']['App']['UpdateEntry'](arg1);
 }

@@ -9,7 +9,7 @@ extern void goTrayShow(void);
 extern void goTrayQuit(void);
 extern void goTrayCheckUpdates(void);
 extern void goTrayStartTimer(char *ticketKey, char *description);
-extern void goTrayStopTimer(void);
+extern void goTrayStopTimer(char *comment);
 extern void goTrayCancelTimer(void);
 extern char *goTrayLoadAssignedTickets(void);
 extern char *goTraySearchTickets(char *query);
@@ -48,6 +48,7 @@ void updateStatusHoverPopoverContent(NSString *detailText);
 @interface TrayDelegate : NSObject
 - (void)showWindow:(id)sender;
 - (void)timerAction:(id)sender;
+- (void)promptStopTimerWithComment;
 - (void)cancelTimer:(id)sender;
 - (void)mouseEntered:(NSEvent *)event;
 - (void)mouseExited:(NSEvent *)event;
@@ -64,6 +65,11 @@ static NSString *trimmedString(NSString *value) {
         return @"";
     }
     return [value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+}
+
+static char *copyUTF8CString(NSString *value) {
+    const char *utf8 = value ? [value UTF8String] : NULL;
+    return utf8 ? strdup(utf8) : strdup("");
 }
 
 static NSString *extractTicketKey(NSString *input) {
@@ -367,7 +373,7 @@ static NSArray<NSDictionary *> *ticketsFromGoJSON(char *jsonCString) {
 - (void)timerAction:(id)sender {
     hideStatusHoverPopover();
     if (trayTimerRunning) {
-        goTrayStopTimer();
+        [self promptStopTimerWithComment];
         return;
     }
 
@@ -377,6 +383,30 @@ static NSArray<NSDictionary *> *ticketsFromGoJSON(char *jsonCString) {
     dispatch_async(dispatch_get_main_queue(), ^{
         [trayStartController showFromStatusButton:statusItem.button];
     });
+}
+
+- (void)promptStopTimerWithComment {
+    NSAlert *alert = [[NSAlert alloc] init];
+    [alert setMessageText:@"Stop Timer"];
+    [alert setInformativeText:@"Optional: add a Jira comment to post with this stop action."];
+    [alert setAlertStyle:NSAlertStyleInformational];
+    [alert addButtonWithTitle:@"Stop Timer"];
+    [alert addButtonWithTitle:@"Cancel"];
+
+    NSTextField *commentField = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, 320, 24)];
+    [commentField setPlaceholderString:@"Comment (optional)"];
+    [alert setAccessoryView:commentField];
+
+    NSModalResponse response = [alert runModal];
+    if (response != NSAlertFirstButtonReturn) {
+        return;
+    }
+
+    [commentField validateEditing];
+    NSString *comment = trimmedString(commentField.stringValue);
+    char *commentCopy = copyUTF8CString(comment);
+    goTrayStopTimer(commentCopy);
+    free(commentCopy);
 }
 
 - (void)cancelTimer:(id)sender {

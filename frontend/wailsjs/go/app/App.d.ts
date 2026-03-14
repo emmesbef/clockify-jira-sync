@@ -59,4 +59,6 @@ export function StartTimer(arg1:string,arg2:string,arg3:string):Promise<models.T
 
 export function StopTimer():Promise<models.TimeEntry>;
 
+export function StopTimerWithComment(arg1:string):Promise<models.TimeEntry>;
+
 export function UpdateEntry(arg1:models.UpdateEntryRequest):Promise<void>;

@@ -134,9 +134,9 @@ func (a *App) InitTray(version string, icon []byte) {
 				wailsRuntime.EventsEmit(a.ctx, "tray-timer-started", ticketKey)
 			}
 		}()
-	}, func() {
+	}, func(stopComment string) {
 		go func() {
-			entry, err := a.StopTimer()
+			entry, err := a.StopTimerWithComment(stopComment)
 			if err != nil {
 				log.Printf("Tray stop timer failed: %v", err)
 				if strings.Contains(err.Error(), "no timer is running") {
@@ -489,11 +489,21 @@ func (a *App) StartTimer(ticketKey string, projectID string, description string)
 	return &a.timer, nil
 }
 
-// StopTimer stops the running timer and syncs to Jira
+// StopTimer stops the running timer and syncs to Jira.
+// Kept for backwards compatibility with existing frontend bindings.
 func (a *App) StopTimer() (*models.TimeEntry, error) {
+	return a.StopTimerWithComment("")
+}
+
+// StopTimerWithComment stops the running timer, syncs to Jira,
+// and optionally posts an issue comment when stopComment is provided.
+func (a *App) StopTimerWithComment(stopComment string) (*models.TimeEntry, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	return a.stopTimerLocked(strings.TrimSpace(stopComment))
+}
 
+func (a *App) stopTimerLocked(stopComment string) (*models.TimeEntry, error) {
 	if !a.timer.Running {
 		return nil, fmt.Errorf("no timer is running")
 	}
@@ -527,6 +537,11 @@ func (a *App) StopTimer() (*models.TimeEntry, error) {
 	if err != nil {
 		log.Printf("Warning: Failed to add Jira worklog: %v", err)
 		// Don't fail — Clockify entry was already stopped
+	}
+	if stopComment != "" {
+		if err := a.jira.AddIssueComment(a.timer.TicketKey, stopComment); err != nil {
+			log.Printf("Warning: Failed to add Jira issue comment: %v", err)
+		}
 	}
 
 	entry := models.TimeEntry{

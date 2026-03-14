@@ -389,6 +389,43 @@ func newADFComment(text string) *adfDoc {
 	}
 }
 
+type issueCommentRequest struct {
+	Body *adfDoc `json:"body,omitempty"`
+}
+
+// AddIssueComment posts a comment on a Jira issue.
+func (c *Client) AddIssueComment(issueKey, comment string) error {
+	comment = strings.TrimSpace(comment)
+	if comment == "" {
+		return nil
+	}
+
+	apiURL := fmt.Sprintf("%s/rest/api/3/issue/%s/comment", c.baseURL, issueKey)
+	body := issueCommentRequest{
+		Body: newADFComment(comment),
+	}
+	jsonBody, _ := json.Marshal(body)
+
+	req, err := http.NewRequest(http.MethodPost, apiURL, bytes.NewReader(jsonBody))
+	if err != nil {
+		return err
+	}
+	c.setHeaders(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("jira API error %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	return nil
+}
+
 // worklogRequest is the request body for creating/updating a worklog
 type worklogRequest struct {
 	Comment          *adfDoc `json:"comment,omitempty"`

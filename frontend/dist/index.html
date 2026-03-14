@@ -9,8 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-  <script type="module" crossorigin src="/assets/index.548fbd48.js"></script>
-  <link rel="stylesheet" href="/assets/index.0103767b.css">
+  <script type="module" crossorigin src="/assets/index.b8fd68e9.js"></script>
+  <link rel="stylesheet" href="/assets/index.5365993a.css">
 </head>
 
 <body>
@@ -358,6 +358,26 @@
                 <div class="modal-actions">
                     <button type="button" id="tray-start-cancel-btn" class="btn btn-ghost">Cancel</button>
                     <button type="submit" class="btn btn-primary">Start Timer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Stop Timer Comment Modal -->
+    <div id="stop-timer-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <h3 class="modal-title">Stop Timer</h3>
+            <form id="stop-comment-form" class="form">
+                <div class="form-group">
+                    <label class="label">Jira Comment (optional)</label>
+                    <input type="text" id="stop-comment-input" class="input"
+                        placeholder="Add a comment to the Jira issue..." />
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" id="stop-comment-cancel-btn" class="btn btn-ghost">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Stop Timer</button>
                 </div>
             </form>
         </div>
