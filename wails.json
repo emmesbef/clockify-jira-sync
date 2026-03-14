@@ -13,8 +13,8 @@
   "info": {
     "companyName": "Fabian Emmesberger",
     "productName": "JiraFy Clockwork",
-    "productVersion": "1.10.24",
-    "copyright": "Copyright © 2026 Fabian Emmesberger",
+    "productVersion": "1.10.25",
+    "copyright": "Copyright \u00a9 2026 Fabian Emmesberger",
     "comments": "MIT Licensed"
   }
 }
